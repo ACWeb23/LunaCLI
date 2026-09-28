@@ -1,0 +1,6 @@
+*.vsidx
+*.v2
+/.vs
+/LunaCLI/bin
+*.slnx
+/LunaCLI/obj
