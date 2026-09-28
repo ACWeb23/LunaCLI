@@ -1,9 +1,10 @@
 ﻿namespace Zenless
 {
     public enum atkElement { nill, Physical, Fire, Ice, Electric, Wind, Ether, Lumiflux }
-    public enum damageBonus { nill, Physical, Fire, Ice, Electric, Wind, Ether, Lumiflux, All }
+    public enum damageBonus { nill, Physical, Fire, Ice, Electric, Wind, Ether, Lumiflux, All, Anomaly }
     public enum Specialty { nill, Attack, Stun, Anomaly, Support, Defense, Rupture, Armorer }
     public enum attackType { Slash, Strike, Pierce }
+    public enum target { self, squad, enemy}
 
     /// <summary>
     /// The specialResource enum holds the name of special resources, it may need to be reworked if an overide is 
@@ -35,7 +36,8 @@
         ATK,
         DEF,
         HP,
-        PEN
+        PEN,
+        nill
     }
     /// <summary>
     /// the driveSet enum holds the names of specific drive sets.
@@ -56,32 +58,44 @@
     {
         public specialResource UniqueResource { get; set; }
         public double resourceAmmount { get; set; }
+        // Advanced Stat
+        public advancedStats statUp { get; set; }
+        public double statValue { get; set; }
         public damageBonus damage_buff { get; set; }
         public double bonus_ammount { get; set; }
 
         public applyConditions buff_Condition { get; set; }
         public double buff_Duration { get; set; }
+        public target buff_Target { get; set; }
 
         public Buff()
         {
             UniqueResource = specialResource.nill;
             resourceAmmount = 0;
+            statUp = advancedStats.nill;
+            statValue = 0;
             damage_buff = damageBonus.All;
             bonus_ammount = 0;
             buff_Condition = applyConditions.Always;
             buff_Duration = 0;
+            buff_Target = target.self;
         }
 
         public Buff(specialResource uniqueResource, double resourceAmmount,
+                    advancedStats AdStat, double bonus_ADV,
                     damageBonus damage_buff, double bonus_ammount,
-                    applyConditions buff_Condition, double buff_Duration)
+                    applyConditions buff_Condition, double buff_Duration,
+                    target bTarget)
         {
-            UniqueResource = uniqueResource;
+            this.UniqueResource = uniqueResource;
             this.resourceAmmount = resourceAmmount;
+            this.statUp = AdStat;
+            this.statValue = bonus_ADV;
             this.damage_buff = damage_buff;
             this.bonus_ammount = bonus_ammount;
             this.buff_Condition = buff_Condition;
             this.buff_Duration = buff_Duration;
+            this.buff_Target = bTarget;
         }
     }
 }

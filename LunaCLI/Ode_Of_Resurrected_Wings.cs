@@ -4,34 +4,44 @@ namespace Zenless
 {
     class Ode_Of_Resurrected_Wings : Weapon
     {
-        private double AP;
-        private Dictionary<string, double> Passive;
+        private Buff[] paradiseLost = [];
 
         public Ode_Of_Resurrected_Wings()
             : base(14158, "Ode Of Resurrected Wings", 743, advancedStats.ATK_Percent, 0.36)
         {
-            // (Original code declared new local variables here, which shadowed the fields
-            //  and left them at 0/null. Assigning to the fields fixes that.)
-            AP = 96;
-
             // passive
-            /*
+            /* AP + 96
              * if Refringe Special damage +20%
              * Damage Bonus + 30%
              * Cooldown 30s
              */
-            Passive = new Dictionary<string, double>
-            {
-                { "Refringe", 1 },
-                { "Special Damage Bonus", 20 },
-                { "All Damage Bonus", 30 },
-                { "Cooldown", 30 }
-            };
-        }
 
-        public (double, Dictionary<string, double>) returnPassive()
-        {
-            return (AP, Passive);
+            Buff apUP = new Buff(
+                specialResource.nill, 0,
+                advancedStats.Anomaly_Proficiency, 96,
+                damageBonus.nill, 0,
+                applyConditions.Always, 0,
+                target.self
+                );
+            Buff Refringe = new Buff(
+                specialResource.nill, 0,
+                advancedStats.nill, 0,
+                damageBonus.Anomaly, 20,
+                applyConditions.Refringe, 30,
+                target.self
+                );
+            Buff RefringeSquad = new Buff(
+                specialResource.nill, 0,
+                advancedStats.nill, 0,
+                damageBonus.Anomaly, 30,
+                applyConditions.Refringe, 30,
+                target.squad
+                );
+            paradiseLost.Append(apUP);
+            paradiseLost.Append(Refringe);
+            paradiseLost.Append(RefringeSquad);
+
+            setPassive(paradiseLost);
         }
     }
 }

@@ -8,7 +8,7 @@ namespace Zenless
     // ------------------------------------------------------------------
     // CHARACTER
     // ------------------------------------------------------------------
-    class Character
+    abstract class Character
     {
         public int characterID { get; protected set; }
         public string name { get; protected set; }

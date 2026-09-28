@@ -5,14 +5,16 @@ namespace Zenless
     // ------------------------------------------------------------------
     // WEAPONS
     // ------------------------------------------------------------------
-    class Weapon
+    abstract class Weapon
     {
-        private int weaponID { get; set; }
-        private string name { get; set; }
+        private int weaponID { get; set; } // Unique ID for the weapon
+        private string name { get; set; } 
         private double baseATK { get; set; }
 
-        private advancedStats advStat { get; set; }
+        private advancedStats advStat { get; set; } // Energy, crit, ATK% ect
         private double stat_Value { get; set; }
+
+        private Buff[] wPassive { get; set; } = [];
 
         protected Weapon(int weaponID, string name, double baseATK, advancedStats advStat, double stat_Value)
         {
@@ -29,6 +31,23 @@ namespace Zenless
         public string get_Name()
         {
             return name;
+        }
+        /// <summary>
+        /// Takes an array of the struct buff and assings them to the wPassive array.
+        /// </summary>
+        /// <param name="passive"></param>
+        protected void setPassive(Buff[] passive)
+        {
+            wPassive = passive;
+        }
+
+        /// <summary>
+        /// this method returns the weapons passive.
+        /// </summary>
+        /// <returns>Wpassive</returns>
+        public virtual Buff[] weaponPassive()
+        {
+            return wPassive;
         }
 
         /// <summary>

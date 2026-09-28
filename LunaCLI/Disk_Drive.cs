@@ -7,7 +7,7 @@ namespace Zenless
     // ------------------------------------------------------------------
     // DISK DRIVES
     // ------------------------------------------------------------------
-    class Disk_Drive
+    abstract class Disk_Drive
     {
         protected int diskID;
 
