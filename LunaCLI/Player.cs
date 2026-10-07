@@ -10,6 +10,8 @@ namespace Zenless
     /// </summary>
     class Player
     {
+        public string Name { get; }
+
         private readonly Dictionary<int, Character> characters = new Dictionary<int, Character>();
         private readonly HashSet<Weapon> weapons = new HashSet<Weapon>();
         private readonly Dictionary<int, Disk_Drive> diskDrives = new Dictionary<int, Disk_Drive>();
@@ -40,6 +42,18 @@ namespace Zenless
         /// Disk drives that are owned but not currently equipped on any character.
         /// </summary>
         public IReadOnlyCollection<Disk_Drive> UnequippedDiskDrives => unequippedDiskDrives.Values;
+
+        /// <summary>
+        /// Creates a player with the given display name and empty inventories.
+        /// </summary>
+        /// <param name="name">The player's name. Must not be null or blank.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+        public Player(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Player name is required.", nameof(name));
+            Name = name;
+        }
 
         /// <summary>
         /// Adds a character to the roster. The same <see cref="Character.characterID"/> cannot be added twice.
