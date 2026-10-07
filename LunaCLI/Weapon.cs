@@ -7,7 +7,8 @@ namespace Zenless
     // ------------------------------------------------------------------
     abstract class Weapon
     {
-        private int weaponID { get; set; } // Unique ID for the weapon
+        public int WeaponID { get; private set; }
+
         private string name { get; set; } 
         private double baseATK { get; set; }
 
@@ -18,7 +19,7 @@ namespace Zenless
 
         protected Weapon(int weaponID, string name, double baseATK, advancedStats advStat, double stat_Value)
         {
-            this.weaponID = weaponID;
+            this.WeaponID = weaponID;
             this.name = name;
             this.baseATK = baseATK;
             this.advStat = advStat;

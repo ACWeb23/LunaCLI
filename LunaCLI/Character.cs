@@ -36,7 +36,7 @@ namespace Zenless
 
         // Equipable items
         protected List<Disk_Drive> diskDrives = new List<Disk_Drive>();
-        protected Weapon wEngine;
+        protected Weapon? wEngine;
         protected object weapon_Passive;
         protected int mindscapeNum { get; set; }
         protected List<bool> mindscapes = new List<bool>([false, false, false, false, false, false]);
@@ -83,9 +83,31 @@ namespace Zenless
 
         // ---------------- Equipping ----------------
 
+        public Weapon? GetEquippedWeapon()
+        {
+            return wEngine;
+        }
+
+        public IReadOnlyList<Disk_Drive> GetEquippedDisks()
+        {
+            return diskDrives.AsReadOnly();
+        }
+
+        public Disk_Drive? GetDiskInSlot(int slot)
+        {
+            return diskDrives.FirstOrDefault(d => d.Drive_Num == slot);
+        }
+
         public void EquipWEngine(Weapon weapon)
         {
             wEngine = weapon ?? throw new ArgumentNullException(nameof(weapon));
+        }
+
+        public Weapon? UnequipWEngine()
+        {
+            Weapon? previous = wEngine;
+            wEngine = null;
+            return previous;
         }
 
         /// <summary>
@@ -100,6 +122,14 @@ namespace Zenless
             diskDrives.RemoveAll(d => d.Drive_Num == disk.Drive_Num);
             diskDrives.Add(disk);
             diskDrives.Sort((a, b) => a.Drive_Num.CompareTo(b.Drive_Num));
+        }
+
+        public Disk_Drive? UnequipDisk(int slot)
+        {
+            Disk_Drive? disk = GetDiskInSlot(slot);
+            if (disk != null)
+                diskDrives.Remove(disk);
+            return disk;
         }
 
         // ---------------- Stat calculation ----------------

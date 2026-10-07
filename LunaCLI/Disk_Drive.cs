@@ -10,6 +10,7 @@ namespace Zenless
     abstract class Disk_Drive
     {
         protected int diskID;
+        public int DiskID => diskID;
 
         protected int setID;
         public driveSet DriveSet { get; protected set; }
