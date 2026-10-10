@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using DamageKind = Zenless.damageBonus;
 
 namespace Zenless
 {
@@ -284,6 +285,8 @@ namespace Zenless
         /// W-Engine base ATK is excluded; read that from <see cref="Weapon.get_Base_Stats"/> separately.
         /// Disk contribution is main stat plus each substat roll
         /// (<see cref="Disk_Drive.SubstatRollValue"/> times the number of rolls).
+        /// Always-on set buffs, and threshold buffs whose Anomaly Mastery requirement is already met,
+        /// are included. Timed combat buffs stay on <see cref="GetActiveSetBuffs"/> and are not added here.
         /// Missing stats are simply absent from the dictionary, not stored as zero.
         /// </summary>
         public Dictionary<advancedStats, double> GetEquipmentBonuses()
@@ -304,7 +307,35 @@ namespace Zenless
                     AddStat(totals, sub.Stat, Disk_Drive.SubstatRollValue(sub.Stat) * sub.NumRoll);
             }
 
+            // Mastery is read before set buffs are added. None of the current
+            // threshold buffs change Anomaly Mastery, so this stays stable.
+            double anomalyMastery = AnomalyMastery * (1 + Get(totals, advancedStats.Anomaly_Mastery));
+            foreach (Buff buff in GetActiveSetBuffs())
+            {
+                if (!CountsAsPassiveStat(buff, anomalyMastery))
+                    continue;
+                if (buff.statUp != advancedStats.nill && buff.statValue != 0)
+                    AddStat(totals, buff.statUp, buff.statValue);
+                if (buff.damage_buff == DamageKind.All && buff.bonus_ammount != 0)
+                    AddStat(totals, advancedStats.Damage_bonus, buff.bonus_ammount);
+            }
+
             return totals;
+        }
+
+        /// <summary>
+        /// True when <paramref name="buff"/> is a permanent self buff, or a mastery-threshold
+        /// buff whose requirement <paramref name="anomalyMastery"/> already satisfies.
+        /// </summary>
+        private static bool CountsAsPassiveStat(Buff buff, double anomalyMastery)
+        {
+            if (buff.buff_Target != target.self)
+                return false;
+            if (buff.buff_Condition == applyConditions.Always)
+                return true;
+            if (buff.buff_Condition == applyConditions.adv_Stat_Threshold)
+                return anomalyMastery >= buff.resourceAmmount;
+            return false;
         }
 
         /// <summary>
@@ -338,6 +369,19 @@ namespace Zenless
         }
 
         /// <summary>
+        /// Set buffs currently applied to this agent.
+        /// Each equipped set contributes its 2-piece <see cref="Buff"/> array at two disks,
+        /// and both the 2-piece and 4-piece arrays at four disks.
+        /// </summary>
+        public Buff[] GetActiveSetBuffs()
+        {
+            var active = new List<Buff>();
+            foreach (KeyValuePair<driveSet, int> set in GetSetCounts())
+                active.AddRange(Disk_Drive.ActiveSetBuffs(set.Key, set.Value, atkElement));
+            return active.ToArray();
+        }
+
+        /// <summary>
         /// Reserved for subclass setup that must run after gear is equipped
         /// (mindscape activation, passive registration, and similar). No work is done yet.
         /// </summary>
@@ -358,7 +402,8 @@ namespace Zenless
         /// <item>Impact = baseImpact * (1 + Impact%). Anomaly Mastery and Energy Regen use the same shape.</item>
         /// <item>Crit rate, crit damage, Anomaly Proficiency, PEN ratio, and damage bonus are base + flat gear.</item>
         /// </list>
-        /// Set bonuses are reported as piece counts only. Their stat effects are not folded into these totals yet.
+        /// Permanent set buffs are included in those totals. Timed set buffs are listed under set bonuses
+        /// and are not added until their condition is met in combat.
         /// Ratios are printed with the percent format (0.05 displays as 5.0%).
         /// </remarks>
         public void PrintSummary()
@@ -390,7 +435,24 @@ namespace Zenless
 
             Console.WriteLine(" Set bonuses:");
             foreach (var kv in GetSetCounts())
-                Console.WriteLine($"   {kv.Key}: {kv.Value} pc {(kv.Value >= 4 ? "(4pc active)" : kv.Value >= 2 ? "(2pc active)" : "")}");
+            {
+                string tier = kv.Value >= 4 ? "(2pc + 4pc active)" : kv.Value >= 2 ? "(2pc active)" : "";
+                Console.WriteLine($"   {kv.Key}: {kv.Value} pc {tier}");
+                if (kv.Value >= 2)
+                {
+                    foreach (Buff buff in Disk_Drive.TwoPiece(kv.Key))
+                        Console.WriteLine($"      2pc: {DescribeBuff(buff)}");
+                }
+                if (kv.Value >= 4)
+                {
+                    foreach (Buff buff in Disk_Drive.FourPiece(kv.Key))
+                    {
+                        if (!Disk_Drive.AppliesToWearer(kv.Key, buff, atkElement))
+                            continue;
+                        Console.WriteLine($"      4pc: {DescribeBuff(buff)}");
+                    }
+                }
+            }
 
             Console.WriteLine("----------------------------------------------");
             Console.WriteLine($" HP                  : {finalHP:F0}");
@@ -405,6 +467,63 @@ namespace Zenless
             Console.WriteLine($" Energy Regen        : {finalER:F2}");
             Console.WriteLine($" DMG Bonus           : {finalDmgBonus:P1}");
             Console.WriteLine("==============================================");
+        }
+
+        /// <summary>
+        /// One-line description of a set buff for <see cref="PrintSummary"/>.
+        /// An enemy-targeted Anomaly amount is the buildup-RES cut used by Freedom Blues.
+        /// </summary>
+        private static string DescribeBuff(Buff buff)
+        {
+            var parts = new List<string>();
+            if (buff.statUp != advancedStats.nill && buff.statValue != 0)
+            {
+                string value = IsRatioStat(buff.statUp) ? buff.statValue.ToString("P0") : buff.statValue.ToString("0");
+                parts.Add($"{buff.statUp} +{value}");
+            }
+            if (buff.damage_buff != DamageKind.nill && buff.bonus_ammount != 0)
+            {
+                bool buildupRes = buff.buff_Target == target.enemy && buff.damage_buff == DamageKind.Anomaly;
+                string label = buildupRes ? "Anomaly Buildup RES" : $"{buff.damage_buff} DMG";
+                string sign = buildupRes ? "-" : "+";
+                parts.Add($"{label} {sign}{buff.bonus_ammount:P0}");
+            }
+            if (parts.Count == 0)
+                parts.Add("passive");
+
+            string text = string.Join(", ", parts);
+            if (buff.buff_Condition == applyConditions.adv_Stat_Threshold)
+                text += $" when Anomaly Mastery >= {buff.resourceAmmount:0}";
+            else if (buff.buff_Condition != applyConditions.Always)
+                text += $" on {buff.buff_Condition}";
+            if (buff.buff_Duration > 0)
+                text += $" for {buff.buff_Duration:0}s";
+            if (buff.buff_Target != target.self)
+                text += $" ({buff.buff_Target})";
+            return text;
+        }
+
+        /// <summary>
+        /// True when <paramref name="stat"/> is stored as a fraction (0.16 = 16%).
+        /// </summary>
+        private static bool IsRatioStat(advancedStats stat)
+        {
+            switch (stat)
+            {
+                case advancedStats.ATK_Percent:
+                case advancedStats.HP_Percent:
+                case advancedStats.DEF_Percent:
+                case advancedStats.Crit_Rate:
+                case advancedStats.Crit_Damage:
+                case advancedStats.PEN_Ratio:
+                case advancedStats.Anomaly_Mastery:
+                case advancedStats.Damage_bonus:
+                case advancedStats.EnergyRegen:
+                case advancedStats.Impact:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }
