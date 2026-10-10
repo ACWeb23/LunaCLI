@@ -12,6 +12,9 @@ namespace Zenless
         protected int diskID;
         public int DiskID => diskID;
 
+        /// <summary>Optional disk art shown in the windowed interface. Empty until an image is chosen.</summary>
+        public string? ImagePath { get; set; }
+
         protected int setID;
         public driveSet DriveSet { get; protected set; }
         public int Drive_Num { get; protected set; }

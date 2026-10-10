@@ -32,6 +32,9 @@ namespace Zenless
         /// <summary>In-game agent id. Used to tell two agents of the same name apart.</summary>
         public int characterID { get; protected set; }
 
+        /// <summary>Optional portrait file shown in the windowed interface. Empty until an image is chosen.</summary>
+        public string? ImagePath { get; set; }
+
         /// <summary>Display name shown in summaries and squad listings.</summary>
         public string name { get; protected set; }
 
@@ -391,6 +394,60 @@ namespace Zenless
         }
 
         /// <summary>
+        /// Final combat stats after the W-Engine and equipped disks, including permanent set buffs.
+        /// </summary>
+        public CombatStats GetCombatStats()
+        {
+            var bonus = GetEquipmentBonuses();
+            double weaponATK = wEngine != null ? wEngine.get_Base_Stats().Item1 : 0;
+
+            // Percent multiplier applies to the base (and, for ATK, the W-Engine base).
+            // Flat bonuses from disks are added after the multiply so they are not scaled by %.
+            return new CombatStats
+            {
+                HP = baseHP * (1 + Get(bonus, advancedStats.HP_Percent)) + Get(bonus, advancedStats.HP),
+                ATK = (baseATK + weaponATK) * (1 + Get(bonus, advancedStats.ATK_Percent)) + Get(bonus, advancedStats.ATK),
+                DEF = baseDEF * (1 + Get(bonus, advancedStats.DEF_Percent)) + Get(bonus, advancedStats.DEF),
+                Impact = baseImpact * (1 + Get(bonus, advancedStats.Impact)),
+                CritRate = critRate + Get(bonus, advancedStats.Crit_Rate),
+                CritDamage = critDMG + Get(bonus, advancedStats.Crit_Damage),
+                AnomalyProficiency = AnomalyProficiency + Get(bonus, advancedStats.Anomaly_Proficiency),
+                AnomalyMastery = AnomalyMastery * (1 + Get(bonus, advancedStats.Anomaly_Mastery)),
+                PenRatio = penRatio + Get(bonus, advancedStats.PEN_Ratio),
+                EnergyRegen = baseEnergyRegen * (1 + Get(bonus, advancedStats.EnergyRegen)),
+                DamageBonus = damageBonus + Get(bonus, advancedStats.Damage_bonus)
+            };
+        }
+
+        /// <summary>
+        /// Set-bonus lines in the same shape <see cref="PrintSummary"/> prints, including indentation.
+        /// </summary>
+        public IReadOnlyList<string> FormatSetBonuses()
+        {
+            var lines = new List<string>();
+            foreach (var kv in GetSetCounts())
+            {
+                string tier = kv.Value >= 4 ? "(2pc + 4pc active)" : kv.Value >= 2 ? "(2pc active)" : "";
+                lines.Add($"   {kv.Key}: {kv.Value} pc {tier}");
+                if (kv.Value >= 2)
+                {
+                    foreach (Buff buff in Disk_Drive.TwoPiece(kv.Key))
+                        lines.Add($"      2pc: {DescribeBuff(buff)}");
+                }
+                if (kv.Value >= 4)
+                {
+                    foreach (Buff buff in Disk_Drive.FourPiece(kv.Key))
+                    {
+                        if (!Disk_Drive.AppliesToWearer(kv.Key, buff, atkElement))
+                            continue;
+                        lines.Add($"      4pc: {DescribeBuff(buff)}");
+                    }
+                }
+            }
+            return lines;
+        }
+
+        /// <summary>
         /// Prints identity, equipped gear, set-piece counts, and final combat stats.
         /// </summary>
         /// <remarks>
@@ -408,22 +465,7 @@ namespace Zenless
         /// </remarks>
         public void PrintSummary()
         {
-            var bonus = GetEquipmentBonuses();
-            double weaponATK = wEngine != null ? wEngine.get_Base_Stats().Item1 : 0;
-
-            // Percent multiplier applies to the base (and, for ATK, the W-Engine base).
-            // Flat bonuses from disks are added after the multiply so they are not scaled by %.
-            double finalHP = baseHP * (1 + Get(bonus, advancedStats.HP_Percent)) + Get(bonus, advancedStats.HP);
-            double finalATK = (baseATK + weaponATK) * (1 + Get(bonus, advancedStats.ATK_Percent)) + Get(bonus, advancedStats.ATK);
-            double finalDEF = baseDEF * (1 + Get(bonus, advancedStats.DEF_Percent)) + Get(bonus, advancedStats.DEF);
-            double finalImpact = baseImpact * (1 + Get(bonus, advancedStats.Impact));
-            double finalCR = critRate + Get(bonus, advancedStats.Crit_Rate);
-            double finalCD = critDMG + Get(bonus, advancedStats.Crit_Damage);
-            double finalAP = AnomalyProficiency + Get(bonus, advancedStats.Anomaly_Proficiency);
-            double finalAM = AnomalyMastery * (1 + Get(bonus, advancedStats.Anomaly_Mastery));
-            double finalPen = penRatio + Get(bonus, advancedStats.PEN_Ratio);
-            double finalER = baseEnergyRegen * (1 + Get(bonus, advancedStats.EnergyRegen));
-            double finalDmgBonus = damageBonus + Get(bonus, advancedStats.Damage_bonus);
+            CombatStats stats = GetCombatStats();
 
             Console.WriteLine("==============================================");
             Console.WriteLine($" {name}  [{rank}]  {specialty} / {attackType} / {atkElement}  (ID {characterID})");
@@ -434,38 +476,21 @@ namespace Zenless
                 Console.WriteLine($"   Slot {d.Drive_Num}: {d.DriveSet,-22} Main: {d.MainStat} ({d.MainStatValue})");
 
             Console.WriteLine(" Set bonuses:");
-            foreach (var kv in GetSetCounts())
-            {
-                string tier = kv.Value >= 4 ? "(2pc + 4pc active)" : kv.Value >= 2 ? "(2pc active)" : "";
-                Console.WriteLine($"   {kv.Key}: {kv.Value} pc {tier}");
-                if (kv.Value >= 2)
-                {
-                    foreach (Buff buff in Disk_Drive.TwoPiece(kv.Key))
-                        Console.WriteLine($"      2pc: {DescribeBuff(buff)}");
-                }
-                if (kv.Value >= 4)
-                {
-                    foreach (Buff buff in Disk_Drive.FourPiece(kv.Key))
-                    {
-                        if (!Disk_Drive.AppliesToWearer(kv.Key, buff, atkElement))
-                            continue;
-                        Console.WriteLine($"      4pc: {DescribeBuff(buff)}");
-                    }
-                }
-            }
+            foreach (string line in FormatSetBonuses())
+                Console.WriteLine(line);
 
             Console.WriteLine("----------------------------------------------");
-            Console.WriteLine($" HP                  : {finalHP:F0}");
-            Console.WriteLine($" ATK                 : {finalATK:F0}");
-            Console.WriteLine($" DEF                 : {finalDEF:F0}");
-            Console.WriteLine($" Impact              : {finalImpact:F1}");
-            Console.WriteLine($" Crit Rate           : {finalCR:P1}");
-            Console.WriteLine($" Crit DMG            : {finalCD:P1}");
-            Console.WriteLine($" Anomaly Proficiency : {finalAP:F0}");
-            Console.WriteLine($" Anomaly Mastery     : {finalAM:F1}");
-            Console.WriteLine($" PEN Ratio           : {finalPen:P1}");
-            Console.WriteLine($" Energy Regen        : {finalER:F2}");
-            Console.WriteLine($" DMG Bonus           : {finalDmgBonus:P1}");
+            Console.WriteLine($" HP                  : {stats.HP:F0}");
+            Console.WriteLine($" ATK                 : {stats.ATK:F0}");
+            Console.WriteLine($" DEF                 : {stats.DEF:F0}");
+            Console.WriteLine($" Impact              : {stats.Impact:F1}");
+            Console.WriteLine($" Crit Rate           : {stats.CritRate:P1}");
+            Console.WriteLine($" Crit DMG            : {stats.CritDamage:P1}");
+            Console.WriteLine($" Anomaly Proficiency : {stats.AnomalyProficiency:F0}");
+            Console.WriteLine($" Anomaly Mastery     : {stats.AnomalyMastery:F1}");
+            Console.WriteLine($" PEN Ratio           : {stats.PenRatio:P1}");
+            Console.WriteLine($" Energy Regen        : {stats.EnergyRegen:F2}");
+            Console.WriteLine($" DMG Bonus           : {stats.DamageBonus:P1}");
             Console.WriteLine("==============================================");
         }
 
@@ -506,7 +531,7 @@ namespace Zenless
         /// <summary>
         /// True when <paramref name="stat"/> is stored as a fraction (0.16 = 16%).
         /// </summary>
-        private static bool IsRatioStat(advancedStats stat)
+        internal static bool IsRatioStat(advancedStats stat)
         {
             switch (stat)
             {

@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Microsoft.UI.Dispatching;
+using WinRT;
 
 namespace Zenless
 {
@@ -9,11 +14,145 @@ namespace Zenless
     // ------------------------------------------------------------------
     class Program
     {
-        public static void Main(string[] args)
+        private const int AttachParentProcess = -1;
+
+        /// <summary>
+        /// WinUI window by default. --terminal opens the text menu.
+        /// </summary>
+        [STAThread]
+        public static int Main(string[] args)
         {
-            Player george = LoadGeorge();
-            RunMenu(george);
+            if (!TryChooseInterface(args, out bool useTerminal, out bool helpOnly, out string? error))
+            {
+                EnsureConsole();
+                if (!string.IsNullOrEmpty(error))
+                    Console.WriteLine(error);
+                PrintUsage();
+                return helpOnly ? 0 : 1;
+            }
+
+            if (useTerminal)
+            {
+                EnsureConsole();
+                RunMenu(LoadGeorge());
+                return 0;
+            }
+
+            return RunWindow();
         }
+
+        /// <summary>
+        /// No arguments open the window. --terminal / -t opens the text menu.
+        /// </summary>
+        private static bool TryChooseInterface(string[] args, out bool useTerminal, out bool helpOnly, out string? error)
+        {
+            useTerminal = false;
+            helpOnly = false;
+            error = null;
+            bool window = false;
+            bool help = false;
+            var unknown = new List<string>();
+
+            foreach (string arg in args)
+            {
+                switch (arg.ToLowerInvariant())
+                {
+                    case "--ui":
+                    case "-u":
+                    case "/ui":
+                        window = true;
+                        break;
+                    case "--terminal":
+                    case "-t":
+                    case "/terminal":
+                        useTerminal = true;
+                        break;
+                    case "--help":
+                    case "-h":
+                    case "-?":
+                    case "/?":
+                    case "/help":
+                        help = true;
+                        break;
+                    default:
+                        unknown.Add(arg);
+                        break;
+                }
+            }
+
+            if (unknown.Count > 0)
+                error = "Unknown argument: " + string.Join(" ", unknown);
+            else if (window && useTerminal)
+                error = "Use either --ui or --terminal.";
+
+            if (help && unknown.Count == 0 && !(window && useTerminal))
+            {
+                helpOnly = true;
+                return false;
+            }
+
+            return error == null;
+        }
+
+        private static void PrintUsage()
+        {
+            Console.WriteLine("LunaCLI [--terminal]");
+            Console.WriteLine();
+            Console.WriteLine("  (no arguments)   Windowed interface");
+            Console.WriteLine("  --ui, -u         Windowed interface");
+            Console.WriteLine("  --terminal, -t   Text menu in this console");
+            Console.WriteLine("  --help, -h       Show this help");
+        }
+
+        /// <summary>
+        /// Starts the WinUI message loop. The console menu is not shown in this mode.
+        /// </summary>
+        private static int RunWindow()
+        {
+            try
+            {
+                App.UsePlayer(LoadGeorge());
+                ComWrappersSupport.InitializeComWrappers();
+                Microsoft.UI.Xaml.Application.Start(callback =>
+                {
+                    var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
+                    SynchronizationContext.SetSynchronizationContext(context);
+                    new App();
+                });
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                EnsureConsole();
+                Console.Error.WriteLine(ex);
+                return 1;
+            }
+        }
+
+        /// <summary>
+        /// A windowed build has no console until one is attached. A console build already has one.
+        /// </summary>
+        private static void EnsureConsole()
+        {
+            if (GetConsoleWindow() != IntPtr.Zero)
+                return;
+
+            if (!AttachConsole(AttachParentProcess))
+                AllocConsole();
+
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+            Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+            Console.SetIn(new StreamReader(Console.OpenStandardInput()));
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AttachConsole(int dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AllocConsole();
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetConsoleWindow();
 
         /// <summary>
         /// Builds player George with Remielle, two Ode of Resurrected Wings, and ten unique disk drives.

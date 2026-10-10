@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Zenless.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Luna">
+    <Grid RequestedTheme="Dark" Background="{StaticResource InkBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="TitleBar" Grid.Row="0" Background="{StaticResource InkBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center" Margin="20,0,160,0">
+                <TextBlock
+                    Text="LUNA"
+                    FontFamily="Segoe UI Variable Display"
+                    FontWeight="SemiBold"
+                    FontSize="18"
+                    CharacterSpacing="180"
+                    Foreground="{StaticResource PaperBrush}"
+                    VerticalAlignment="Center" />
+                <TextBlock
+                    x:Name="PlayerName"
+                    Foreground="{StaticResource MutedBrush}"
+                    VerticalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <NavigationView
+            x:Name="Nav"
+            Grid.Row="1"
+            PaneDisplayMode="Left"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="False"
+            IsTitleBarAutoPaddingEnabled="False"
+            OpenPaneLength="220"
+            SelectionChanged="Nav_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Characters" Tag="characters">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE77B;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Weapons" Tag="weapons">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7FC;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Disk Drives" Tag="disks">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xEDA2;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+            <Frame x:Name="ContentFrame" />
+        </NavigationView>
+    </Grid>
+</Window>

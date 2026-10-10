@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Zenless.Ui.ImageField"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    AllowDrop="True"
+    DragOver="OnDragOver"
+    Drop="OnDrop">
+    <StackPanel Spacing="0">
+        <TextBlock
+            x:Name="FieldLabel"
+            Text="Image"
+            FontSize="12"
+            Foreground="{StaticResource MutedBrush}"
+            Margin="2,0,0,6" />
+        <Border
+            x:Name="Chrome"
+            Height="200"
+            CornerRadius="16"
+            BorderBrush="{StaticResource LineBrush}"
+            BorderThickness="1"
+            Background="{StaticResource InkBrush}">
+            <Grid>
+                <StackPanel
+                    x:Name="PlaceholderHost"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Spacing="8"
+                    Margin="16">
+                    <FontIcon
+                        Glyph="&#xE91B;"
+                        FontSize="28"
+                        Foreground="{StaticResource MutedBrush}"
+                        HorizontalAlignment="Center" />
+                    <TextBlock
+                        x:Name="PlaceholderText"
+                        Text="Drop an image"
+                        TextAlignment="Center"
+                        TextWrapping="WrapWholeWords"
+                        Foreground="{StaticResource MutedBrush}" />
+                </StackPanel>
+                <Image x:Name="Picture" Stretch="UniformToFill" Visibility="Collapsed" />
+            </Grid>
+        </Border>
+        <Grid x:Name="ButtonRow" ColumnSpacing="8" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="ChooseButton" Content="Choose image" HorizontalAlignment="Stretch" Click="ChooseButton_Click" />
+            <Button x:Name="RemoveButton" Grid.Column="1" Content="Remove" Visibility="Collapsed" Click="RemoveButton_Click" />
+        </Grid>
+    </StackPanel>
+</UserControl>

@@ -9,6 +9,9 @@ namespace Zenless
     {
         public int WeaponID { get; private set; }
 
+        /// <summary>Optional weapon art shown in the windowed interface. Empty until an image is chosen.</summary>
+        public string? ImagePath { get; set; }
+
         private string name { get; set; } 
         private double baseATK { get; set; }
 
