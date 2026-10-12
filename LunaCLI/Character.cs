@@ -32,7 +32,7 @@ namespace Zenless
         /// <summary>In-game agent id. Used to tell two agents of the same name apart.</summary>
         public int characterID { get; protected set; }
 
-        /// <summary>Optional portrait file shown in the windowed interface. Empty until an image is chosen.</summary>
+        /// <summary>Portrait file shown in the windowed interface. Subclasses assign a bundled image.</summary>
         public string? ImagePath { get; set; }
 
         /// <summary>Display name shown in summaries and squad listings.</summary>
@@ -154,6 +154,14 @@ namespace Zenless
             this.attackType = attackType;
             this.atkElement = atkElement;
             this.mindscapeNum = Mnum;
+        }
+
+        /// <summary>
+        /// Resolves a file in <c>Images/Characters</c> next to the running app.
+        /// </summary>
+        protected static string Portrait(string fileName)
+        {
+            return Path.Combine(AppContext.BaseDirectory, "Images", "Characters", fileName);
         }
 
         /// <summary>

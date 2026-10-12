@@ -155,14 +155,16 @@ namespace Zenless
         private static extern IntPtr GetConsoleWindow();
 
         /// <summary>
-        /// Builds player George with Remielle, two Ode of Resurrected Wings, and ten unique disk drives.
+        /// Builds player George with the full agent roster, two Ode of Resurrected Wings, and ten unique disk drives.
         /// Six disks and one W-Engine are equipped on Remielle; the rest stay in inventory.
         /// </summary>
         private static Player LoadGeorge()
         {
             Player george = new Player("George");
-            Remielle remielle = new Remielle(0);
-            george.AddCharacter(remielle);
+            foreach (Character character in CharacterRoster.CreateAll())
+                george.AddCharacter(character);
+
+            Remielle remielle = (Remielle)george.GetCharacter(1581)!;
 
             Weapon equippedWings = new Ode_Of_Resurrected_Wings();
             Weapon spareWings = new Ode_Of_Resurrected_Wings();
