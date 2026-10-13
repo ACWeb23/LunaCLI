@@ -28,7 +28,7 @@ namespace Zenless.Ui
 
             Subtitle.Text = disks.Count == 0
                 ? "No disk drives yet. Create one to add it to the inventory."
-                : $"{disks.Count} owned. Create a drive, or equip one onto an agent.";
+                : $"{disks.Count} owned. Create a drive, equip one onto an agent, or delete one.";
 
             foreach (Disk_Drive disk in disks)
                 _cards.Add(DiskCard(player, disk));
@@ -71,20 +71,41 @@ namespace Zenless.Ui
                 Margin = new Thickness(0, 6, 0, 0)
             });
 
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            Disk_Drive bound = disk;
+            Character? equippedOn = holder;
             if (holder == null)
             {
-                var equip = new Button
-                {
-                    Content = "Equip",
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Margin = new Thickness(0, 8, 0, 0)
-                };
-                Disk_Drive bound = disk;
+                var equip = new Button { Content = "Equip" };
                 equip.Click += async (_, _) => await EquipFromInventory(bound);
-                stack.Children.Add(equip);
+                actions.Children.Add(equip);
             }
 
+            var delete = new Button { Content = "Delete" };
+            delete.Click += async (_, _) => await DeleteDisk(bound, equippedOn);
+            actions.Children.Add(delete);
+            stack.Children.Add(actions);
+
             return ViewHelpers.Card(stack);
+        }
+
+        private async Task DeleteDisk(Disk_Drive disk, Character? holder)
+        {
+            string label = $"{ViewHelpers.Pretty(disk.DriveSet)} slot {disk.Drive_Num}";
+            string detail = holder == null
+                ? $"Delete {label} from the inventory?"
+                : $"{label} is equipped on {holder.getName()}. Delete it from the inventory?";
+            var dialog = ViewHelpers.Dialog("Delete disk drive", detail, XamlRoot, "Delete");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            App.Player.RemoveDiskDrive(disk);
+            LoadCards();
         }
 
         private async void NewDisk_Click(object sender, RoutedEventArgs e)

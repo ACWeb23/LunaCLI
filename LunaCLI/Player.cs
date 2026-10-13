@@ -357,6 +357,30 @@ namespace Zenless
         }
 
         /// <summary>
+        /// Deletes a disk drive from the inventory. If a character has it equipped, that slot is left empty.
+        /// </summary>
+        /// <param name="disk">The owned disk drive to delete.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="disk"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the disk is not in this player's inventory.</exception>
+        public void RemoveDiskDrive(Disk_Drive disk)
+        {
+            if (disk == null)
+                throw new ArgumentNullException(nameof(disk));
+            if (!diskDrives.ContainsKey(disk.DiskID) || diskDrives[disk.DiskID] != disk)
+                throw new InvalidOperationException("Disk drive is not in the player's inventory.");
+
+            foreach (Character character in characters.Values)
+            {
+                if (character.GetDiskInSlot(disk.Drive_Num) == disk)
+                    character.UnequipDisk(disk.Drive_Num);
+            }
+
+            diskDrives.Remove(disk.DiskID);
+            unequippedDiskDrives.Remove(disk.DiskID);
+            NotifyChanged();
+        }
+
+        /// <summary>
         /// Returns the W-Engine currently equipped on the given roster character.
         /// </summary>
         /// <param name="character">The roster character to inspect.</param>
