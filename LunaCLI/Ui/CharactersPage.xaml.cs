@@ -133,11 +133,7 @@ namespace Zenless.Ui
             Detail.Children.Add(header);
 
             Detail.Children.Add(ViewHelpers.SectionTitle("W-Engine"));
-            Weapon? weapon = character.GetEquippedWeapon();
-            if (weapon == null)
-                Detail.Children.Add(ViewHelpers.Muted("No W-Engine equipped."));
-            else
-                Detail.Children.Add(WeaponBlock(weapon));
+            Detail.Children.Add(WeaponSection(character));
 
             Detail.Children.Add(ViewHelpers.SectionTitle("Disk drives"));
             Detail.Children.Add(DiskGrid(character));
@@ -221,6 +217,66 @@ namespace Zenless.Ui
             }
 
             return grid;
+        }
+
+        private StackPanel WeaponSection(Character character)
+        {
+            var section = new StackPanel { Spacing = 10 };
+            Weapon? weapon = character.GetEquippedWeapon();
+            if (weapon == null)
+                section.Children.Add(ViewHelpers.Muted("No W-Engine equipped."));
+            else
+                section.Children.Add(WeaponBlock(weapon));
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            var equip = new Button { Content = weapon == null ? "Equip" : "Change" };
+            equip.Click += async (_, _) => await PickWeapon(character);
+            actions.Children.Add(equip);
+            if (weapon != null)
+            {
+                var remove = new Button { Content = "Remove" };
+                remove.Click += (_, _) =>
+                {
+                    App.Player.UnequipWeapon(character);
+                    ShowDetail(character);
+                };
+                actions.Children.Add(remove);
+            }
+            section.Children.Add(actions);
+            return section;
+        }
+
+        private async Task PickWeapon(Character character)
+        {
+            List<Weapon> options = App.Player.UnequippedWeapons
+                .OrderBy(weapon => weapon.get_Name())
+                .ToList();
+            if (options.Count == 0)
+            {
+                await ViewHelpers.Dialog("Equip W-Engine", "No unequipped W-Engines are in the inventory.", XamlRoot).ShowAsync();
+                return;
+            }
+
+            var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 360, MinWidth = 420 };
+            foreach (Weapon weapon in options)
+            {
+                var (baseValue, _) = weapon.get_Base_Stats();
+                list.Items.Add(new ListViewItem
+                {
+                    Tag = weapon,
+                    Content = $"{weapon.get_Name()}    {weapon.BaseStatLabel} {baseValue:N0}"
+                });
+            }
+            list.SelectedIndex = 0;
+
+            var dialog = ViewHelpers.Dialog("Equip W-Engine", list, XamlRoot, "Equip");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary
+                || list.SelectedItem is not ListViewItem item
+                || item.Tag is not Weapon chosen)
+                return;
+
+            App.Player.EquipWeapon(character, chosen);
+            ShowDetail(character);
         }
 
         private static UIElement WeaponBlock(Weapon weapon)
