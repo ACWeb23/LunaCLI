@@ -27,7 +27,7 @@ namespace Zenless.Ui
 
             Subtitle.Text = weapons.Count == 0
                 ? "No weapons yet. Add a W-Engine to put it in the inventory."
-                : $"{weapons.Count} owned. Add another copy, or replace a portrait.";
+                : $"{weapons.Count} owned. Add another copy, delete one, or replace a portrait.";
 
             foreach (Weapon weapon in weapons)
                 _cards.Add(WeaponCard(player, weapon));
@@ -35,7 +35,7 @@ namespace Zenless.Ui
             ViewHelpers.Relayout(CardHost, _cards, ActualWidth - 32, 280);
         }
 
-        private static Border WeaponCard(Player player, Weapon weapon)
+        private Border WeaponCard(Player player, Weapon weapon)
         {
             var (atk, advanced) = weapon.get_Base_Stats();
             Character? holder = ViewHelpers.WeaponHolder(player, weapon);
@@ -63,7 +63,31 @@ namespace Zenless.Ui
                 Margin = new Thickness(0, 4, 0, 0)
             });
 
+            var delete = new Button
+            {
+                Content = "Delete",
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            Weapon bound = weapon;
+            Character? equippedOn = holder;
+            delete.Click += async (_, _) => await DeleteWeapon(bound, equippedOn);
+            stack.Children.Add(delete);
+
             return ViewHelpers.Card(stack);
+        }
+
+        private async Task DeleteWeapon(Weapon weapon, Character? holder)
+        {
+            string detail = holder == null
+                ? $"Delete {weapon.get_Name()} from the inventory?"
+                : $"{weapon.get_Name()} is equipped on {holder.getName()}. Delete it from the inventory?";
+            var dialog = ViewHelpers.Dialog("Delete weapon", detail, XamlRoot, "Delete");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            App.Player.RemoveWeapon(weapon);
+            LoadCards();
         }
 
         private async void AddWeapon_Click(object sender, RoutedEventArgs e)

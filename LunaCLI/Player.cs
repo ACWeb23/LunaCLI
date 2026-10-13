@@ -282,6 +282,30 @@ namespace Zenless
         }
 
         /// <summary>
+        /// Deletes a weapon from the inventory. If a character has it equipped, that character is left unarmed.
+        /// </summary>
+        /// <param name="weapon">The owned weapon to delete.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="weapon"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the weapon is not in this player's inventory.</exception>
+        public void RemoveWeapon(Weapon weapon)
+        {
+            if (weapon == null)
+                throw new ArgumentNullException(nameof(weapon));
+            if (!weapons.Contains(weapon))
+                throw new InvalidOperationException("Weapon is not in the player's inventory.");
+
+            foreach (Character character in characters.Values)
+            {
+                if (character.GetEquippedWeapon() == weapon)
+                    character.UnequipWEngine();
+            }
+
+            weapons.Remove(weapon);
+            unequippedWeapons.Remove(weapon);
+            NotifyChanged();
+        }
+
+        /// <summary>
         /// Equips a owned, unequipped disk drive onto a roster character.
         /// Disks occupy slots 1-6. If that slot is already filled, the previous disk is moved back
         /// into the unequipped inventory.
