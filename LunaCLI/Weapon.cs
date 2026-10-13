@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace Zenless
 {
@@ -18,15 +18,31 @@ namespace Zenless
         private advancedStats advStat { get; set; } // Energy, crit, ATK% ect
         private double stat_Value { get; set; }
 
-        private Buff[] wPassive { get; set; } = [];
+        private Buff[] passiveBuffs { get; set; } = [];
 
-        protected Weapon(int weaponID, string name, double baseATK, advancedStats advStat, double stat_Value)
+        /// <summary>
+        /// Armorer W-Engines add <see cref="baseATK"/> to DEF. Every other engine adds it to ATK.
+        /// </summary>
+        public bool UsesDefenseBase { get; private set; }
+
+        public string BaseStatLabel => UsesDefenseBase ? "Base DEF" : "Base ATK";
+
+        protected Weapon(int weaponID, string name, double baseATK, advancedStats advStat, double stat_Value, bool usesDefenseBase = false)
         {
             this.WeaponID = weaponID;
             this.name = name;
             this.baseATK = baseATK;
             this.advStat = advStat;
             this.stat_Value = stat_Value;
+            this.UsesDefenseBase = usesDefenseBase;
+        }
+
+        /// <summary>
+        /// Resolves a file in <c>Images/Wengine</c> next to the running app.
+        /// </summary>
+        protected static string Portrait(string fileName)
+        {
+            return Path.Combine(AppContext.BaseDirectory, "Images", "Wengine", fileName);
         }
 
         /// <summary>
@@ -37,12 +53,12 @@ namespace Zenless
             return name;
         }
         /// <summary>
-        /// Takes an array of the struct buff and assings them to the wPassive array.
+        /// Takes an array of the struct buff and assings them to the passiveBuffs array.
         /// </summary>
         /// <param name="passive"></param>
         protected void setPassive(Buff[] passive)
         {
-            wPassive = passive;
+            passiveBuffs = passive;
         }
 
         /// <summary>
@@ -51,7 +67,7 @@ namespace Zenless
         /// <returns>Wpassive</returns>
         public virtual Buff[] weaponPassive()
         {
-            return wPassive;
+            return passiveBuffs;
         }
 
         /// <summary>

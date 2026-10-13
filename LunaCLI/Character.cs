@@ -388,7 +388,7 @@ namespace Zenless
         {
             var active = new List<Buff>();
             foreach (KeyValuePair<driveSet, int> set in GetSetCounts())
-                active.AddRange(Disk_Drive.ActiveSetBuffs(set.Key, set.Value, atkElement));
+                active.AddRange(Disk_Drive.ActiveSetBuffs(set.Key, set.Value, atkElement, specialty));
             return active.ToArray();
         }
 
@@ -407,7 +407,16 @@ namespace Zenless
         public CombatStats GetCombatStats()
         {
             var bonus = GetEquipmentBonuses();
-            double weaponATK = wEngine != null ? wEngine.get_Base_Stats().Item1 : 0;
+            double weaponATK = 0;
+            double weaponDEF = 0;
+            if (wEngine != null)
+            {
+                double weaponBase = wEngine.get_Base_Stats().Item1;
+                if (wEngine.UsesDefenseBase)
+                    weaponDEF = weaponBase;
+                else
+                    weaponATK = weaponBase;
+            }
 
             // Percent multiplier applies to the base (and, for ATK, the W-Engine base).
             // Flat bonuses from disks are added after the multiply so they are not scaled by %.
@@ -415,7 +424,7 @@ namespace Zenless
             {
                 HP = baseHP * (1 + Get(bonus, advancedStats.HP_Percent)) + Get(bonus, advancedStats.HP),
                 ATK = (baseATK + weaponATK) * (1 + Get(bonus, advancedStats.ATK_Percent)) + Get(bonus, advancedStats.ATK),
-                DEF = baseDEF * (1 + Get(bonus, advancedStats.DEF_Percent)) + Get(bonus, advancedStats.DEF),
+                DEF = (baseDEF + weaponDEF) * (1 + Get(bonus, advancedStats.DEF_Percent)) + Get(bonus, advancedStats.DEF),
                 Impact = baseImpact * (1 + Get(bonus, advancedStats.Impact)),
                 CritRate = critRate + Get(bonus, advancedStats.Crit_Rate),
                 CritDamage = critDMG + Get(bonus, advancedStats.Crit_Damage),
@@ -446,7 +455,7 @@ namespace Zenless
                 {
                     foreach (Buff buff in Disk_Drive.FourPiece(kv.Key))
                     {
-                        if (!Disk_Drive.AppliesToWearer(kv.Key, buff, atkElement))
+                        if (!Disk_Drive.AppliesToWearer(kv.Key, buff, atkElement, specialty))
                             continue;
                         lines.Add($"      4pc: {DescribeBuff(buff)}");
                     }
@@ -462,8 +471,8 @@ namespace Zenless
         /// Final stats follow the standard split between percent and flat gear:
         /// <list type="bullet">
         /// <item>HP  = baseHP * (1 + HP%) + flat HP</item>
-        /// <item>ATK = (baseATK + W-Engine base ATK) * (1 + ATK%) + flat ATK</item>
-        /// <item>DEF = baseDEF * (1 + DEF%) + flat DEF</item>
+        /// <item>ATK = (baseATK + W-Engine base ATK) * (1 + ATK%) + flat ATK. A defense-scaling W-Engine adds its base to DEF instead.</item>
+        /// <item>DEF = (baseDEF + W-Engine base DEF) * (1 + DEF%) + flat DEF</item>
         /// <item>Impact = baseImpact * (1 + Impact%). Anomaly Mastery and Energy Regen use the same shape.</item>
         /// <item>Crit rate, crit damage, Anomaly Proficiency, PEN ratio, and damage bonus are base + flat gear.</item>
         /// </list>
@@ -508,6 +517,9 @@ namespace Zenless
         /// </summary>
         private static string DescribeBuff(Buff buff)
         {
+            if (!string.IsNullOrWhiteSpace(buff.Note))
+                return buff.Note;
+
             var parts = new List<string>();
             if (buff.statUp != advancedStats.nill && buff.statValue != 0)
             {
@@ -553,6 +565,8 @@ namespace Zenless
                 case advancedStats.Damage_bonus:
                 case advancedStats.EnergyRegen:
                 case advancedStats.Impact:
+                case advancedStats.Shield_Effect:
+                case advancedStats.Daze:
                     return true;
                 default:
                     return false;

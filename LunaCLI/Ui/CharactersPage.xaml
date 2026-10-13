@@ -14,14 +14,25 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.ColumnSpan="2" Spacing="2">
-            <TextBlock Text="Characters" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock
-                x:Name="Subtitle"
-                Opacity="0.72"
-                TextWrapping="Wrap"
-                Text="Select an agent. Portraits come with the app. You can still replace a portrait, W-Engine, or disk image." />
-        </StackPanel>
+        <Grid Grid.ColumnSpan="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="2">
+                <TextBlock Text="Characters" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock
+                    x:Name="Subtitle"
+                    Opacity="0.72"
+                    TextWrapping="Wrap"
+                    Text="Select an agent. Add anyone who is not in the roster yet, and equip disk drives from the inventory." />
+            </StackPanel>
+            <Button
+                Grid.Column="1"
+                Content="Add character"
+                VerticalAlignment="Center"
+                Click="AddCharacter_Click" />
+        </Grid>
 
         <ListView
             x:Name="RosterList"

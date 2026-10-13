@@ -27,7 +27,7 @@ namespace Zenless.Ui
 
             Subtitle.Text = weapons.Count == 0
                 ? "No weapons in the inventory."
-                : $"{weapons.Count} owned. Each card has an image field — choose a file or drop one on it.";
+                : $"{weapons.Count} owned. Portraits come with the app. You can still replace one.";
 
             foreach (Weapon weapon in weapons)
                 _cards.Add(WeaponCard(player, weapon));
@@ -52,7 +52,7 @@ namespace Zenless.Ui
                 FontWeight = FontWeights.SemiBold,
                 TextWrapping = TextWrapping.Wrap
             });
-            stack.Children.Add(ViewHelpers.Muted($"Base ATK  {atk:N0}"));
+            stack.Children.Add(ViewHelpers.Muted($"{weapon.BaseStatLabel}  {atk:N0}"));
             foreach (var stat in advanced)
                 stack.Children.Add(ViewHelpers.Muted($"{ViewHelpers.Pretty(stat.Key)}  {ViewHelpers.FormatStat(stat.Key, stat.Value)}"));
             stack.Children.Add(new TextBlock

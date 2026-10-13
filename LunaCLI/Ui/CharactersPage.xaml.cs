@@ -242,7 +242,7 @@ namespace Zenless.Ui
                 FontWeight = FontWeights.SemiBold,
                 TextWrapping = TextWrapping.Wrap
             });
-            text.Children.Add(ViewHelpers.Muted($"Base ATK  {atk:N0}"));
+            text.Children.Add(ViewHelpers.Muted($"{weapon.BaseStatLabel}  {atk:N0}"));
             foreach (var stat in advanced)
                 text.Children.Add(ViewHelpers.Muted($"{ViewHelpers.Pretty(stat.Key)}  {ViewHelpers.FormatStat(stat.Key, stat.Value)}"));
             Grid.SetColumn(text, 1);
@@ -250,7 +250,7 @@ namespace Zenless.Ui
             return row;
         }
 
-        private static Grid DiskGrid(Character character)
+        private Grid DiskGrid(Character character)
         {
             var grid = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
             for (int column = 0; column < 3; column++)
@@ -260,6 +260,7 @@ namespace Zenless.Ui
 
             for (int slot = 1; slot <= 6; slot++)
             {
+                int captured = slot;
                 var stack = new StackPanel { Spacing = 6 };
                 Disk_Drive? disk = character.GetDiskInSlot(slot);
                 var image = new ImageField { ImageHeight = 132, Fit = Stretch.Uniform };
@@ -284,6 +285,22 @@ namespace Zenless.Ui
                         $"Slot {bound.Drive_Num}  ·  {ViewHelpers.Pretty(bound.MainStat)}  {ViewHelpers.FormatStat(bound.MainStat, bound.MainStatValue)}"));
                 }
 
+                var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                var equip = new Button { Content = disk == null ? "Equip" : "Change" };
+                equip.Click += async (_, _) => await PickDisk(character, captured);
+                actions.Children.Add(equip);
+                if (disk != null)
+                {
+                    var clear = new Button { Content = "Unequip" };
+                    clear.Click += (_, _) =>
+                    {
+                        App.Player.UnequipDisk(character, captured);
+                        ShowDetail(character);
+                    };
+                    actions.Children.Add(clear);
+                }
+                stack.Children.Add(actions);
+
                 var card = ViewHelpers.Card(stack);
                 Grid.SetRow(card, (slot - 1) / 3);
                 Grid.SetColumn(card, (slot - 1) % 3);
@@ -291,6 +308,86 @@ namespace Zenless.Ui
             }
 
             return grid;
+        }
+
+        private async void AddCharacter_Click(object sender, RoutedEventArgs e)
+        {
+            List<Character> missing = CharacterRoster.CreateAll()
+                .Where(agent => App.Player.GetCharacter(agent.characterID) == null)
+                .OrderBy(agent => agent.getName())
+                .ToList();
+            if (missing.Count == 0)
+            {
+                await ViewHelpers.Dialog("Add character", "Every agent is already in the roster.", XamlRoot).ShowAsync();
+                return;
+            }
+
+            var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 360 };
+            foreach (Character agent in missing)
+            {
+                list.Items.Add(new ListViewItem
+                {
+                    Tag = agent.characterID,
+                    Content = $"{agent.getName()}    {agent.rank}-Rank    {ViewHelpers.Pretty(agent.specialty)} / {ViewHelpers.Pretty(agent.atkElement)}"
+                });
+            }
+            list.SelectedIndex = 0;
+
+            var minds = new NumberBox
+            {
+                Header = "Mindscapes",
+                Minimum = 0,
+                Maximum = 6,
+                Value = 0,
+                SmallChange = 1,
+                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline
+            };
+            var panel = new StackPanel { Spacing = 10, MinWidth = 420 };
+            panel.Children.Add(minds);
+            panel.Children.Add(list);
+
+            var dialog = ViewHelpers.Dialog("Add character", panel, XamlRoot, "Add");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary
+                || list.SelectedItem is not ListViewItem item
+                || item.Tag is not int id)
+                return;
+
+            Character created = CharacterRoster.Create(id, (int)Math.Clamp(minds.Value, 0, 6));
+            App.Player.AddCharacter(created);
+            LoadRoster();
+        }
+
+        private async Task PickDisk(Character character, int slot)
+        {
+            List<Disk_Drive> options = App.Player.UnequippedDiskDrives
+                .Where(disk => disk.Drive_Num == slot)
+                .OrderBy(disk => disk.DiskID)
+                .ToList();
+            if (options.Count == 0)
+            {
+                await ViewHelpers.Dialog("Equip disk drive", $"No unequipped slot {slot} disks are in the inventory.", XamlRoot).ShowAsync();
+                return;
+            }
+
+            var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 360, MinWidth = 420 };
+            foreach (Disk_Drive disk in options)
+            {
+                list.Items.Add(new ListViewItem
+                {
+                    Tag = disk,
+                    Content = $"{ViewHelpers.Pretty(disk.DriveSet)}    {ViewHelpers.Pretty(disk.MainStat)} {ViewHelpers.FormatStat(disk.MainStat, disk.MainStatValue)}"
+                });
+            }
+            list.SelectedIndex = 0;
+
+            var dialog = ViewHelpers.Dialog($"Equip slot {slot}", list, XamlRoot, "Equip");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary
+                || list.SelectedItem is not ListViewItem item
+                || item.Tag is not Disk_Drive chosen)
+                return;
+
+            App.Player.EquipDisk(character, chosen);
+            ShowDetail(character);
         }
 
         private static void ApplyThumb(Image photo, FrameworkElement placeholder, string? path)

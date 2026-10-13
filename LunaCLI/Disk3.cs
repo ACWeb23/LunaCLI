@@ -12,6 +12,7 @@ namespace Zenless
             MainStat = advancedStats.DEF;
             MainStatValue = 184.0;
             Load_Substats(substats);
+            UseSetIcon();
         }
     }
 }

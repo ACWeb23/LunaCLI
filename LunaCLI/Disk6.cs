@@ -12,6 +12,7 @@ namespace Zenless
             MainStat = primaryStat;
             MainStatValue = primStatVal;
             Load_Substats(substats);
+            UseSetIcon();
         }
     }
 }

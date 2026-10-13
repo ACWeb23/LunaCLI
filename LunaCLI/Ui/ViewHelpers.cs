@@ -10,7 +10,28 @@ namespace Zenless.Ui
     {
         public static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 
-        public static string Pretty(Enum value) => value.ToString().Replace('_', ' ');
+        public static string Pretty(Enum value)
+        {
+            if (value is driveSet set)
+                return Disk_Drive.SetName(set);
+            return value.ToString().Replace('_', ' ');
+        }
+
+        public static ContentDialog Dialog(string title, object content, XamlRoot root, string? primary = null)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = title,
+                Content = content,
+                CloseButtonText = primary == null ? "Close" : "Cancel",
+                DefaultButton = primary == null ? ContentDialogButton.Close : ContentDialogButton.Primary,
+                XamlRoot = root,
+                RequestedTheme = ElementTheme.Dark
+            };
+            if (primary != null)
+                dialog.PrimaryButtonText = primary;
+            return dialog;
+        }
 
         public static string FormatStat(advancedStats stat, double value)
         {

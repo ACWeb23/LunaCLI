@@ -7,7 +7,7 @@ namespace Zenless
     // ------------------------------------------------------------------
     // DISK DRIVES
     // ------------------------------------------------------------------
-    abstract class Disk_Drive
+    abstract partial class Disk_Drive
     {
         protected int diskID;
         public int DiskID => diskID;
@@ -99,91 +99,34 @@ namespace Zenless
 
         static Disk_Drive()
         {
-            Buff Stat(advancedStats stat, double value, applyConditions condition, double duration)
-            {
-                return new Buff(
-                    specialResource.nill, 0,
-                    stat, value,
-                    damageBonus.nill, 0,
-                    condition, duration,
-                    target.self);
-            }
+            DefineSetBonuses();
+        }
 
-            Buff Damage(damageBonus bonus, double amount, applyConditions condition, double duration, target who)
-            {
-                return new Buff(
-                    specialResource.nill, 0,
-                    advancedStats.nill, 0,
-                    bonus, amount,
-                    condition, duration,
-                    who);
-            }
+        private static Buff Stat(advancedStats stat, double value, applyConditions condition, double duration, target who = target.self)
+        {
+            return new Buff(
+                specialResource.nill, 0,
+                stat, value,
+                damageBonus.nill, 0,
+                condition, duration,
+                who);
+        }
 
-            // 2pc: Anomaly Proficiency +30.
-            // 4pc: On entering battle, Anomaly Proficiency +50 for 15s.
-            //      Lumiflux agents also gain Attribute Anomaly DMG +15% for 15s.
-            Define(driveSet.Feathered_Fate,
-                new[]
-                {
-                    Stat(advancedStats.Anomaly_Proficiency, 30, applyConditions.Always, 0)
-                },
-                new[]
-                {
-                    Stat(advancedStats.Anomaly_Proficiency, 50, applyConditions.EnterBattle, 15),
-                    Damage(damageBonus.Anomaly, 0.15, applyConditions.EnterBattle, 15, target.self)
-                });
+        private static Buff Damage(damageBonus bonus, double amount, applyConditions condition, double duration, target who)
+        {
+            return new Buff(
+                specialResource.nill, 0,
+                advancedStats.nill, 0,
+                bonus, amount,
+                condition, duration,
+                who);
+        }
 
-            // 2pc: Anomaly Proficiency +30.
-            // 4pc: An EX Special hit lowers the target's Anomaly Buildup RES by 20% for 8s.
-            //      bonus_ammount is that resistance cut; the buff targets the enemy.
-            Define(driveSet.Freedom_Blues,
-                new[]
-                {
-                    Stat(advancedStats.Anomaly_Proficiency, 30, applyConditions.Always, 0)
-                },
-                new[]
-                {
-                    Damage(damageBonus.Anomaly, 0.20, applyConditions.EX_SP_ATK, 8, target.enemy)
-                });
-
-            // 2pc: Aftershock and Dash Attack DMG +15%.
-            // 4pc: A matching-attribute Aftershock or Dash hit grants one stack for 15s.
-            //      Each stack is ATK +4% and Crit Rate +4%, up to 3 stacks.
-            //      These buffs are one stack; the cap is not a field on Buff.
-            Define(driveSet.Shadow_Harmony,
-                new[]
-                {
-                    Damage(damageBonus.All, 0.15, applyConditions.Aftershock, 0, target.self),
-                    Damage(damageBonus.All, 0.15, applyConditions.dashATK, 0, target.self)
-                },
-                new[]
-                {
-                    Stat(advancedStats.ATK_Percent, 0.04, applyConditions.Aftershock, 15),
-                    Stat(advancedStats.Crit_Rate, 0.04, applyConditions.Aftershock, 15),
-                    Stat(advancedStats.ATK_Percent, 0.04, applyConditions.dashATK, 15),
-                    Stat(advancedStats.Crit_Rate, 0.04, applyConditions.dashATK, 15)
-                });
-
-            // 2pc: Crit DMG +16%.
-            // 4pc: Crit DMG +30% while Anomaly Mastery is at least 115.
-            //      Freeze or Shatter from any squad member grants Crit Rate +12% for 15s.
-            //      The freeze and shatter buffs are the same bonus; they do not stack.
-            Define(driveSet.Branch_And_Blade_Song,
-                new[]
-                {
-                    Stat(advancedStats.Crit_Damage, 0.16, applyConditions.Always, 0)
-                },
-                new[]
-                {
-                    new Buff(
-                        specialResource.nill, 115,
-                        advancedStats.Crit_Damage, 0.30,
-                        damageBonus.nill, 0,
-                        applyConditions.adv_Stat_Threshold, 0,
-                        target.self),
-                    Stat(advancedStats.Crit_Rate, 0.12, applyConditions.freeze, 15),
-                    Stat(advancedStats.Crit_Rate, 0.12, applyConditions.shatter, 15)
-                });
+        private static Buff Noted(string note)
+        {
+            Buff buff = new Buff();
+            buff.Note = note;
+            return buff;
         }
 
         private static void Define(driveSet set, Buff[] two, Buff[] four)
@@ -219,7 +162,7 @@ namespace Zenless
         /// Two or more pieces include the 2-piece array. Four or more include both arrays.
         /// The result is one copy of each effect, not one copy per disk.
         /// </summary>
-        public static Buff[] ActiveSetBuffs(driveSet set, int pieceCount, atkElement wearer)
+        public static Buff[] ActiveSetBuffs(driveSet set, int pieceCount, atkElement wearer, Specialty specialty)
         {
             var active = new List<Buff>();
             if (pieceCount >= 2)
@@ -228,7 +171,7 @@ namespace Zenless
             {
                 foreach (Buff buff in FourPiece(set))
                 {
-                    if (AppliesToWearer(set, buff, wearer))
+                    if (AppliesToWearer(set, buff, wearer, specialty))
                         active.Add(buff);
                 }
             }
@@ -236,16 +179,155 @@ namespace Zenless
         }
 
         /// <summary>
-        /// Feathered Fate's anomaly-damage clause applies only to Lumiflux agents.
-        /// Every other set buff applies to any wearer.
+        /// Drops 4-piece clauses that require an element or a specialty the wearer does not have.
         /// </summary>
-        public static bool AppliesToWearer(driveSet set, Buff buff, atkElement wearer)
+        public static bool AppliesToWearer(driveSet set, Buff buff, atkElement wearer, Specialty specialty)
         {
             if (set == driveSet.Feathered_Fate
                 && buff.damage_buff == damageBonus.Anomaly
                 && wearer != atkElement.Lumiflux)
                 return false;
+            if (set == driveSet.The_Sky_Ablaze
+                && buff.statUp == advancedStats.Crit_Damage
+                && wearer != atkElement.Ether)
+                return false;
+            if (set == driveSet.Moonlight_Lullaby && specialty != Specialty.Support)
+                return false;
+            if (set == driveSet.King_of_the_Summit && specialty != Specialty.Stun)
+                return false;
+            if (set == driveSet.Bunny_in_Wonderland && specialty != Specialty.Defense)
+                return false;
+            if (set == driveSet.Dawns_Bloom && buff.buff_Duration >= 25 && specialty != Specialty.Attack)
+                return false;
+            if (set == driveSet.White_Water_Ballad && buff.buff_Duration >= 30 && specialty != Specialty.Attack)
+                return false;
             return true;
+        }
+
+        /// <summary>Portrait file for a drive set, under <c>Images/DiskDrives</c>.</summary>
+        public static string IconFileName(driveSet set)
+        {
+            return set switch
+            {
+                driveSet.Feathered_Fate => "Drive_Disc_Feathered_Fate_Icon.webp",
+                driveSet.Freedom_Blues => "Drive_Disc_Freedom_Blues_Icon.webp",
+                driveSet.Shadow_Harmony => "Drive_Disc_Shadow_Harmony_Icon.webp",
+                driveSet.Branch_And_Blade_Song => "Drive_Disc_Branch_%26_Blade_Song_Icon.webp",
+                driveSet.Woodpecker_Electro => "Drive_Disc_Woodpecker_Electro_Icon.webp",
+                driveSet.Puffer_Electro => "Drive_Disc_Puffer_Electro_Icon.webp",
+                driveSet.Shockstar_Disco => "Drive_Disc_Shockstar_Disco_Icon.webp",
+                driveSet.Hormone_Punk => "Drive_Disc_Hormone_Punk_Icon.webp",
+                driveSet.Swing_Jazz => "Drive_Disc_Swing_Jazz_Icon.webp",
+                driveSet.Soul_Rock => "Drive_Disc_Soul_Rock_Icon.webp",
+                driveSet.Inferno_Metal => "Drive_Disc_Inferno_Metal_Icon.webp",
+                driveSet.Chaotic_Metal => "Drive_Disc_Chaotic_Metal_Icon.webp",
+                driveSet.Thunder_Metal => "Drive_Disc_Thunder_Metal_Icon.webp",
+                driveSet.Polar_Metal => "Drive_Disc_Polar_Metal_Icon.webp",
+                driveSet.Fanged_Metal => "Drive_Disc_Fanged_Metal_Icon.webp",
+                driveSet.Chaos_Jazz => "Drive_Disc_Chaos_Jazz_Icon.webp",
+                driveSet.Proto_Punk => "Drive_Disc_Proto_Punk_Icon.webp",
+                driveSet.Astral_Voice => "Drive_Disc_Astral_Voice_Icon.webp",
+                driveSet.Phaethons_Melody => "Drive_Disc_Phaethon%27s_Melody_Icon.webp",
+                driveSet.Yunkui_Tales => "Drive_Disc_Yunkui_Tales_Icon.webp",
+                driveSet.King_of_the_Summit => "Drive_Disc_King_of_the_Summit_Icon.webp",
+                driveSet.Moonlight_Lullaby => "Drive_Disc_Moonlight_Lullaby_Icon.webp",
+                driveSet.Dawns_Bloom => "Drive_Disc_Dawn's_Bloom_Icon.webp",
+                driveSet.The_Sky_Ablaze => "Drive_Disc_The_Sky_Ablaze_Icon.webp",
+                driveSet.White_Water_Ballad => "Drive_Disc_White_Water_Ballad_Icon.webp",
+                driveSet.Thorned_Rose => "Drive_Disc_Thorned_Rose_Icon.webp",
+                driveSet.Bunny_in_Wonderland => "Drive_Disc_Bunny_in_Wonderland_Icon.webp",
+                driveSet.Shining_Aria => "Drive_Disc_Shining_Aria_Icon.webp",
+                driveSet.Wuthering_Salon => "Drive_Disc_Wuthering_Salon_Icon.webp",
+                driveSet.Notes_From_the_Chained => "Drive_Disc_Notes_From_the_Chained_Icon.webp",
+                _ => throw new ArgumentOutOfRangeException(nameof(set))
+            };
+        }
+
+        public static string IconPath(driveSet set)
+        {
+            return Path.Combine(AppContext.BaseDirectory, "Images", "DiskDrives", IconFileName(set));
+        }
+
+        public static string SetName(driveSet set)
+        {
+            return set switch
+            {
+                driveSet.Branch_And_Blade_Song => "Branch & Blade Song",
+                driveSet.Dawns_Bloom => "Dawn's Bloom",
+                driveSet.Phaethons_Melody => "Phaethon's Melody",
+                _ => set.ToString().Replace('_', ' ')
+            };
+        }
+
+        /// <summary>Substats a disk is allowed to roll.</summary>
+        public static IReadOnlyList<advancedStats> SubstatOptions { get; } = new[]
+        {
+            advancedStats.HP_Percent,
+            advancedStats.ATK_Percent,
+            advancedStats.DEF_Percent,
+            advancedStats.HP,
+            advancedStats.ATK,
+            advancedStats.DEF,
+            advancedStats.Crit_Rate,
+            advancedStats.Crit_Damage,
+            advancedStats.Anomaly_Proficiency,
+            advancedStats.PEN_Ratio,
+            advancedStats.PEN
+        };
+
+        /// <summary>Main stats legal for slots 4-6. Slots 1-3 are fixed by the disk class.</summary>
+        public static IReadOnlyList<advancedStats> MainStatOptions(int slot)
+        {
+            switch (slot)
+            {
+                case 4:
+                    return new[]
+                    {
+                        advancedStats.Crit_Rate, advancedStats.Crit_Damage, advancedStats.Anomaly_Proficiency,
+                        advancedStats.HP_Percent, advancedStats.ATK_Percent, advancedStats.DEF_Percent,
+                        advancedStats.HP, advancedStats.ATK, advancedStats.DEF
+                    };
+                case 5:
+                    return new[]
+                    {
+                        advancedStats.HP_Percent, advancedStats.ATK_Percent, advancedStats.DEF_Percent,
+                        advancedStats.HP, advancedStats.ATK, advancedStats.DEF,
+                        advancedStats.PEN_Ratio, advancedStats.Damage_bonus
+                    };
+                case 6:
+                    return new[]
+                    {
+                        advancedStats.HP_Percent, advancedStats.ATK_Percent, advancedStats.DEF_Percent,
+                        advancedStats.HP, advancedStats.ATK, advancedStats.DEF,
+                        advancedStats.Impact, advancedStats.Anomaly_Mastery, advancedStats.EnergyRegen
+                    };
+                default:
+                    return Array.Empty<advancedStats>();
+            }
+        }
+
+        /// <summary>A level-15-style starting value so a new disk is usable before the number is edited.</summary>
+        public static double SuggestedMainValue(advancedStats stat)
+        {
+            switch (stat)
+            {
+                case advancedStats.Anomaly_Proficiency: return 92;
+                case advancedStats.HP: return 2200;
+                case advancedStats.ATK: return 316;
+                case advancedStats.DEF: return 184;
+                case advancedStats.Crit_Rate:
+                case advancedStats.PEN_Ratio:
+                    return 0.24;
+                case advancedStats.Crit_Damage:
+                    return 0.48;
+                default:
+                    return Character.IsRatioStat(stat) ? 0.30 : 0;
+            }
+        }
+
+        protected void UseSetIcon()
+        {
+            ImagePath = IconPath(DriveSet);
         }
 
         private static Buff[] Copy(driveSet set, Dictionary<driveSet, Buff[]> effects)

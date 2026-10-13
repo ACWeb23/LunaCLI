@@ -55,5 +55,16 @@ namespace Zenless
             yield return new ZhuYuan(mindscapes);
             yield return new Pyrois(mindscapes);
         }
+
+        /// <summary>
+        /// Builds the agent with <paramref name="characterID"/> at <paramref name="mindscapes"/>.
+        /// </summary>
+        public static Character Create(int characterID, int mindscapes = 0)
+        {
+            Character? match = CreateAll(mindscapes).FirstOrDefault(agent => agent.characterID == characterID);
+            if (match == null)
+                throw new ArgumentException($"No agent uses id {characterID}.", nameof(characterID));
+            return match;
+        }
     }
 }

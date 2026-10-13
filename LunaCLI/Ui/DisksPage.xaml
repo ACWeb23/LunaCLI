@@ -9,10 +9,21 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <StackPanel Spacing="2">
-            <TextBlock Text="Disk Drives" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock x:Name="Subtitle" Opacity="0.72" TextWrapping="Wrap" />
-        </StackPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="2">
+                <TextBlock Text="Disk Drives" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock x:Name="Subtitle" Opacity="0.72" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button
+                Grid.Column="1"
+                Content="New disk drive"
+                VerticalAlignment="Center"
+                Click="NewDisk_Click" />
+        </Grid>
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid x:Name="CardHost" />
         </ScrollViewer>

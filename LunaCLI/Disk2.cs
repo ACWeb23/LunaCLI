@@ -12,6 +12,7 @@ namespace Zenless
             MainStat = advancedStats.ATK;
             MainStatValue = 316.0;
             Load_Substats(substats);
+            UseSetIcon();
         }
     }
 }
