@@ -26,8 +26,8 @@ namespace Zenless.Ui
                 .ToList();
 
             Subtitle.Text = weapons.Count == 0
-                ? "No weapons in the inventory."
-                : $"{weapons.Count} owned. Portraits come with the app. You can still replace one.";
+                ? "No weapons yet. Add a W-Engine to put it in the inventory."
+                : $"{weapons.Count} owned. Add another copy, or replace a portrait.";
 
             foreach (Weapon weapon in weapons)
                 _cards.Add(WeaponCard(player, weapon));
@@ -64,6 +64,41 @@ namespace Zenless.Ui
             });
 
             return ViewHelpers.Card(stack);
+        }
+
+        private async void AddWeapon_Click(object sender, RoutedEventArgs e)
+        {
+            List<Weapon> catalog = WeaponRoster.CreateAll()
+                .OrderBy(weapon => weapon.get_Name())
+                .ToList();
+            if (catalog.Count == 0)
+            {
+                await ViewHelpers.Dialog("Add weapon", "No W-Engines are available.", XamlRoot).ShowAsync();
+                return;
+            }
+
+            var list = new ListView { SelectionMode = ListViewSelectionMode.Single, MaxHeight = 360, MinWidth = 420 };
+            foreach (Weapon weapon in catalog)
+            {
+                var (baseValue, advanced) = weapon.get_Base_Stats();
+                string stats = string.Join("    ", advanced.Select(stat =>
+                    $"{ViewHelpers.Pretty(stat.Key)} {ViewHelpers.FormatStat(stat.Key, stat.Value)}"));
+                list.Items.Add(new ListViewItem
+                {
+                    Tag = weapon.WeaponID,
+                    Content = $"{weapon.get_Name()}    {weapon.BaseStatLabel} {baseValue:N0}    {stats}"
+                });
+            }
+            list.SelectedIndex = 0;
+
+            var dialog = ViewHelpers.Dialog("Add weapon", list, XamlRoot, "Add");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary
+                || list.SelectedItem is not ListViewItem item
+                || item.Tag is not int id)
+                return;
+
+            App.Player.AddWeapon(WeaponRoster.Create(id));
+            LoadCards();
         }
     }
 }
