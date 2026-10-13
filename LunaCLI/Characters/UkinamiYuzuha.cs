@@ -18,6 +18,7 @@ namespace Zenless
             this.damageBonus = 0;
             this.specialDamageBonus = 0;
             this.sheerForce = 0;
+            this.ImagePath = Portrait("Ukinami_Yuzuha_Portrait.webp");
         }
     }
 }
