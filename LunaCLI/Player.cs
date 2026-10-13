@@ -12,6 +12,11 @@ namespace Zenless
     {
         public string Name { get; }
 
+        /// <summary>
+        /// Raised after the roster or inventory changes so the current user can be saved.
+        /// </summary>
+        internal event Action? Changed;
+
         private readonly Dictionary<int, Character> characters = new Dictionary<int, Character>();
         private readonly HashSet<Weapon> weapons = new HashSet<Weapon>();
         private readonly Dictionary<int, Disk_Drive> diskDrives = new Dictionary<int, Disk_Drive>();
@@ -90,6 +95,8 @@ namespace Zenless
 
             foreach (Disk_Drive disk in character.GetEquippedDisks())
                 diskDrives.Add(disk.DiskID, disk);
+
+            NotifyChanged();
         }
 
         /// <summary>
@@ -107,6 +114,7 @@ namespace Zenless
                 throw new InvalidOperationException("That weapon is already in the inventory.");
 
             unequippedWeapons.Add(weapon);
+            NotifyChanged();
         }
 
         /// <summary>
@@ -135,6 +143,39 @@ namespace Zenless
             advancedStats mainStat = advancedStats.nill,
             double mainStatValue = 0)
         {
+            return BuildDiskDrive(AllocateDiskId(), driveSet, driveSubStats, slot, mainStat, mainStatValue);
+        }
+
+        /// <summary>
+        /// Adds a disk that already has an id. Used when a saved user is loaded.
+        /// </summary>
+        internal Disk_Drive RestoreDiskDrive(
+            int diskID,
+            driveSet driveSet,
+            Dictionary<advancedStats, int> driveSubStats,
+            int slot,
+            advancedStats mainStat = advancedStats.nill,
+            double mainStatValue = 0)
+        {
+            if (diskID < 1)
+                throw new ArgumentOutOfRangeException(nameof(diskID), "Disk id must be at least 1.");
+            if (diskDrives.ContainsKey(diskID))
+                throw new InvalidOperationException($"Disk {diskID} is already in the inventory.");
+
+            return BuildDiskDrive(diskID, driveSet, driveSubStats, slot, mainStat, mainStatValue);
+        }
+
+        /// <summary>
+        /// Validates the disk, constructs the slot class, and adds it to the unequipped inventory.
+        /// </summary>
+        private Disk_Drive BuildDiskDrive(
+            int diskID,
+            driveSet driveSet,
+            Dictionary<advancedStats, int> driveSubStats,
+            int slot,
+            advancedStats mainStat,
+            double mainStatValue)
+        {
             if (driveSubStats == null)
                 throw new ArgumentNullException(nameof(driveSubStats));
             if (slot < 1 || slot > 6)
@@ -142,7 +183,6 @@ namespace Zenless
 
             ValidateSubstats(driveSubStats);
 
-            int diskID = AllocateDiskId();
             int setID = (int)driveSet;
             Disk_Drive disk;
 
@@ -191,6 +231,7 @@ namespace Zenless
 
             diskDrives.Add(disk.DiskID, disk);
             unequippedDiskDrives.Add(disk.DiskID, disk);
+            NotifyChanged();
         }
 
         /// <summary>
@@ -220,6 +261,7 @@ namespace Zenless
 
             unequippedWeapons.Remove(weapon);
             character.EquipWEngine(weapon);
+            NotifyChanged();
         }
 
         /// <summary>
@@ -235,6 +277,7 @@ namespace Zenless
             Weapon? weapon = character.UnequipWEngine();
             if (weapon != null)
                 unequippedWeapons.Add(weapon);
+            NotifyChanged();
             return weapon;
         }
 
@@ -268,6 +311,7 @@ namespace Zenless
 
             unequippedDiskDrives.Remove(disk.DiskID);
             character.EquipDisk(disk);
+            NotifyChanged();
         }
 
         /// <summary>
@@ -284,6 +328,7 @@ namespace Zenless
             Disk_Drive? disk = character.UnequipDisk(slot);
             if (disk != null)
                 unequippedDiskDrives[disk.DiskID] = disk;
+            NotifyChanged();
             return disk;
         }
 
@@ -372,6 +417,8 @@ namespace Zenless
         /// <param name="character">The character to validate.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="character"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the character is not in this player's roster.</exception>
+        private void NotifyChanged() => Changed?.Invoke();
+
         private void EnsureOwnedCharacter(Character character)
         {
             if (character == null)

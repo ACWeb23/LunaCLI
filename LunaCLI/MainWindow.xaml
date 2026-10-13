@@ -10,7 +10,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="TitleBar" Grid.Row="0" Background="{StaticResource InkBrush}">
+        <Grid Grid.Row="0" Background="{StaticResource InkBrush}">
+            <Grid x:Name="TitleBar" Background="{StaticResource InkBrush}" />
             <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center" Margin="20,0,160,0">
                 <TextBlock
                     Text="LUNA"
@@ -19,11 +20,18 @@
                     FontSize="18"
                     CharacterSpacing="180"
                     Foreground="{StaticResource PaperBrush}"
-                    VerticalAlignment="Center" />
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False" />
                 <TextBlock
                     x:Name="PlayerName"
                     Foreground="{StaticResource MutedBrush}"
-                    VerticalAlignment="Center" />
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False" />
+                <Button
+                    Content="Users"
+                    VerticalAlignment="Center"
+                    Padding="14,4"
+                    Click="Users_Click" />
             </StackPanel>
         </Grid>
 

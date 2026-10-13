@@ -34,7 +34,7 @@ namespace Zenless
             if (useTerminal)
             {
                 EnsureConsole();
-                RunMenu(LoadGeorge());
+                RunMenu(Watch(UserStore.LoadActiveOrSeed(LoadStar)));
                 return 0;
             }
 
@@ -111,7 +111,7 @@ namespace Zenless
         {
             try
             {
-                App.UsePlayer(LoadGeorge());
+                App.UsePlayer(UserStore.LoadActiveOrSeed(LoadStar));
                 ComWrappersSupport.InitializeComWrappers();
                 Microsoft.UI.Xaml.Application.Start(callback =>
                 {
@@ -155,105 +155,39 @@ namespace Zenless
         private static extern IntPtr GetConsoleWindow();
 
         /// <summary>
-        /// Builds player George with the full agent roster, one of every W-Engine plus a spare Ode of Resurrected Wings, and ten unique disk drives.
-        /// Six disks and one W-Engine are equipped on Remielle; the rest stay in inventory.
+        /// Follows later roster and inventory edits and writes them to this user's save file.
         /// </summary>
-        private static Player LoadGeorge()
+        private static Player Watch(Player player)
         {
-            Player george = new Player("George");
-            foreach (Character character in CharacterRoster.CreateAll())
-                george.AddCharacter(character);
-
-            Remielle remielle = (Remielle)george.GetCharacter(1581)!;
-
-            Weapon equippedWings = new Ode_Of_Resurrected_Wings();
-            george.AddWeapon(equippedWings);
-            george.EquipWeapon(remielle, equippedWings);
-            foreach (Weapon weapon in WeaponRoster.CreateAll())
-                george.AddWeapon(weapon);
-
-            Disk_Drive slot1 = george.CreateDiskDrive(driveSet.Feathered_Fate, Subs(
-                advancedStats.DEF_Percent, 2,
-                advancedStats.Crit_Rate, 1,
-                advancedStats.Anomaly_Proficiency, 2,
-                advancedStats.ATK_Percent, 4), 1);
-            Disk_Drive slot2 = george.CreateDiskDrive(driveSet.Freedom_Blues, Subs(
-                advancedStats.ATK_Percent, 3,
-                advancedStats.Crit_Damage, 1,
-                advancedStats.Anomaly_Proficiency, 3,
-                advancedStats.DEF_Percent, 1), 2);
-            Disk_Drive slot3 = george.CreateDiskDrive(driveSet.Feathered_Fate, Subs(
-                advancedStats.ATK, 2,
-                advancedStats.Anomaly_Proficiency, 2,
-                advancedStats.ATK_Percent, 2,
-                advancedStats.Crit_Rate, 2), 3);
-            Disk_Drive slot4 = george.CreateDiskDrive(driveSet.Feathered_Fate, Subs(
-                advancedStats.DEF, 2,
-                advancedStats.ATK, 1,
-                advancedStats.ATK_Percent, 2,
-                advancedStats.HP, 3), 4, advancedStats.Anomaly_Proficiency, 92.0);
-            Disk_Drive slot5 = george.CreateDiskDrive(driveSet.Freedom_Blues, Subs(
-                advancedStats.Anomaly_Proficiency, 3,
-                advancedStats.HP, 2,
-                advancedStats.DEF, 1,
-                advancedStats.Crit_Damage, 2), 5, advancedStats.ATK_Percent, 0.30);
-            Disk_Drive slot6 = george.CreateDiskDrive(driveSet.Feathered_Fate, Subs(
-                advancedStats.ATK, 3,
-                advancedStats.Anomaly_Proficiency, 2,
-                advancedStats.Crit_Damage, 2,
-                advancedStats.DEF_Percent, 1), 6, advancedStats.ATK_Percent, 0.30);
-
-            george.EquipDisk(remielle, slot1);
-            george.EquipDisk(remielle, slot2);
-            george.EquipDisk(remielle, slot3);
-            george.EquipDisk(remielle, slot4);
-            george.EquipDisk(remielle, slot5);
-            george.EquipDisk(remielle, slot6);
-
-            george.CreateDiskDrive(driveSet.Shadow_Harmony, Subs(
-                advancedStats.Crit_Rate, 3,
-                advancedStats.Crit_Damage, 3,
-                advancedStats.ATK_Percent, 2,
-                advancedStats.PEN, 1), 1);
-            george.CreateDiskDrive(driveSet.Branch_And_Blade_Song, Subs(
-                advancedStats.Crit_Damage, 4,
-                advancedStats.Crit_Rate, 2,
-                advancedStats.DEF_Percent, 1,
-                advancedStats.HP_Percent, 1), 2);
-            george.CreateDiskDrive(driveSet.Shadow_Harmony, Subs(
-                advancedStats.ATK, 2,
-                advancedStats.HP, 2,
-                advancedStats.Anomaly_Proficiency, 3,
-                advancedStats.PEN_Ratio, 1), 4, advancedStats.Crit_Rate, 0.24);
-            george.CreateDiskDrive(driveSet.Freedom_Blues, Subs(
-                advancedStats.Anomaly_Proficiency, 4,
-                advancedStats.ATK_Percent, 2,
-                advancedStats.DEF, 1,
-                advancedStats.HP, 2), 5, advancedStats.Damage_bonus, 0.30);
-
-            return george;
+            player.Changed += () => UserStore.Save(player);
+            return player;
         }
 
         /// <summary>
-        /// Builds a four-stat substat map. Callers must keep the roll total at 8 or 9.
+        /// Saves the user who is open, then follows <paramref name="next"/>.
         /// </summary>
-        private static Dictionary<advancedStats, int> Subs(
-            advancedStats stat1, int rolls1,
-            advancedStats stat2, int rolls2,
-            advancedStats stat3, int rolls3,
-            advancedStats stat4, int rolls4)
+        private static Player Activate(Player current, Player next)
         {
-            return new Dictionary<advancedStats, int>
-            {
-                { stat1, rolls1 },
-                { stat2, rolls2 },
-                { stat3, rolls3 },
-                { stat4, rolls4 }
-            };
+            UserStore.Save(current);
+            UserStore.SetActive(next.Name);
+            return Watch(next);
         }
 
         /// <summary>
-        /// Main loop: inspect the roster, add an agent, create a disk, equip a disk, or exit.
+        /// First-run account. Later launches read Star from the save file instead of building this again.
+        /// </summary>
+        private static Player LoadStar()
+        {
+            Player star = new Player("Star");
+            star.AddCharacter(new AsabaHarumasa(0));
+            star.AddCharacter(new Banyue(0));
+            star.AddCharacter(new HoshimiMiyabi(0));
+            star.AddCharacter(new Soldier0Anby(0));
+            return star;
+        }
+
+        /// <summary>
+        /// Main loop: inspect the roster, add an agent, create a disk, equip a disk, switch users, or exit.
         /// </summary>
         private static void RunMenu(Player player)
         {
@@ -266,7 +200,9 @@ namespace Zenless
                 Console.WriteLine("3. Add character");
                 Console.WriteLine("4. Create disk drive");
                 Console.WriteLine("5. Equip disk drive");
-                Console.WriteLine("6. Exit");
+                Console.WriteLine("6. New user");
+                Console.WriteLine("7. Switch user");
+                Console.WriteLine("8. Exit");
                 Console.Write("Select an option: ");
 
                 switch (Console.ReadLine())
@@ -287,11 +223,75 @@ namespace Zenless
                         EquipDiskMenu(player);
                         break;
                     case "6":
+                        player = CreateUser(player);
+                        break;
+                    case "7":
+                        player = ChooseUser(player);
+                        break;
+                    case "8":
+                        UserStore.Save(player);
                         return;
                     default:
                         Console.WriteLine("Unknown option.");
                         break;
                 }
+            }
+        }
+
+        private static Player CreateUser(Player current)
+        {
+            Console.Write("New user name: ");
+            string? name = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                Console.WriteLine("User name is required.");
+                return current;
+            }
+
+            try
+            {
+                Player created = UserStore.Create(name);
+                Console.WriteLine($"Created {created.Name}.");
+                return Activate(current, created);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException)
+            {
+                Console.WriteLine(ex.Message);
+                return current;
+            }
+        }
+
+        private static Player ChooseUser(Player current)
+        {
+            List<string> names = UserStore.ListNames();
+            if (names.Count == 0)
+            {
+                Console.WriteLine("No saved users.");
+                return current;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("--- Switch user ---");
+            for (int i = 0; i < names.Count; i++)
+            {
+                string mark = string.Equals(names[i], current.Name, StringComparison.OrdinalIgnoreCase) ? "  (current)" : "";
+                Console.WriteLine($"{i + 1}. {names[i]}{mark}");
+            }
+            Console.WriteLine("0. Back");
+            int index = ReadChoice("Select a user: ", names.Count);
+            if (index == 0)
+                return current;
+
+            try
+            {
+                Player selected = UserStore.Load(names[index - 1]);
+                Console.WriteLine($"Opened {selected.Name}.");
+                return Activate(current, selected);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or ArgumentException or InvalidOperationException)
+            {
+                Console.WriteLine(ex.Message);
+                return current;
             }
         }
 

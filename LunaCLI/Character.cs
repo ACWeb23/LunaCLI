@@ -127,6 +127,9 @@ namespace Zenless
         /// </summary>
         protected int mindscapeNum { get; set; }
 
+        /// <summary>How many mindscapes are unlocked, from 0 through 6.</summary>
+        public int Mindscapes => mindscapeNum;
+
         /// <summary>
         /// Per-mindscape unlock flags. Index 0 is Mindscape 1, index 5 is Mindscape 6.
         /// Filled by <see cref="activatMindscapes"/>; left all-false until that runs.

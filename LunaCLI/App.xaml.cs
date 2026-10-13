@@ -15,7 +15,32 @@ namespace Zenless
 
         internal static void UsePlayer(Player player)
         {
-            _player = player ?? throw new ArgumentNullException(nameof(player));
+            if (player == null)
+                throw new ArgumentNullException(nameof(player));
+            if (ReferenceEquals(_player, player))
+                return;
+
+            _player = player;
+            player.Changed += () => UserStore.Save(player);
+        }
+
+        /// <summary>Writes the open user, then makes <paramref name="player"/> the one on screen.</summary>
+        internal static void SwitchTo(Player player)
+        {
+            if (player == null)
+                throw new ArgumentNullException(nameof(player));
+            if (_player != null)
+                UserStore.Save(_player);
+            UsePlayer(player);
+            UserStore.SetActive(player.Name);
+            Host?.ShowPlayer();
+        }
+
+        /// <summary>Writes the open user. Image edits do not go through <see cref="Player"/>, so the window calls this too.</summary>
+        internal static void Save()
+        {
+            if (_player != null)
+                UserStore.Save(_player);
         }
 
         public App()

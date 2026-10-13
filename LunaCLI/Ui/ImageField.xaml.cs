@@ -92,6 +92,7 @@ namespace Zenless.Ui
             _commit?.Invoke(path);
             Show(path);
             ImageChanged?.Invoke(this, EventArgs.Empty);
+            App.Save();
         }
 
         private async void ChooseButton_Click(object sender, RoutedEventArgs e)

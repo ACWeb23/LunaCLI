@@ -52,5 +52,16 @@ namespace Zenless
             yield return new YesterdayCalls();
             yield return new ZanshinHerbCase();
         }
+
+        /// <summary>
+        /// Builds the W-Engine with <paramref name="weaponID"/>.
+        /// </summary>
+        public static Weapon Create(int weaponID)
+        {
+            Weapon? match = CreateAll().FirstOrDefault(weapon => weapon.WeaponID == weaponID);
+            if (match == null)
+                throw new ArgumentException($"No W-Engine uses id {weaponID}.", nameof(weaponID));
+            return match;
+        }
     }
 }
