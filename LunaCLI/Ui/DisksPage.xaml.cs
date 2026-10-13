@@ -117,18 +117,12 @@ namespace Zenless.Ui
             slotBox.SelectedIndex = 0;
 
             var mainBox = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
-            var mainValue = new NumberBox
-            {
-                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
-                SmallChange = 0.01,
-                LargeChange = 0.05,
-                Value = 0.24
-            };
+            var mainValueText = new TextBlock { FontWeight = FontWeights.SemiBold };
             var mainPanel = new StackPanel { Spacing = 6 };
             mainPanel.Children.Add(ViewHelpers.Muted("Main stat"));
             mainPanel.Children.Add(mainBox);
-            mainPanel.Children.Add(ViewHelpers.Muted("Main stat value. Percents are fractions, so 0.24 is 24%."));
-            mainPanel.Children.Add(mainValue);
+            mainPanel.Children.Add(ViewHelpers.Muted("Main stat value is fixed for the chosen stat."));
+            mainPanel.Children.Add(mainValueText);
 
             var subBoxes = new ComboBox[4];
             var rollBoxes = new NumberBox[4];
@@ -172,27 +166,73 @@ namespace Zenless.Ui
             var error = new TextBlock { Foreground = ViewHelpers.Brush("GoldBrush"), TextWrapping = TextWrapping.Wrap };
             form.Children.Add(error);
 
-            void RefreshMain()
+            bool refreshing = false;
+
+            void ShowFixedValue()
+            {
+                if (mainBox.SelectedItem is ComboBoxItem item && item.Tag is advancedStats stat)
+                    mainValueText.Text = ViewHelpers.FormatStat(stat, Disk_Drive.FixedMainValue(stat));
+                else
+                    mainValueText.Text = "";
+            }
+
+            void RefreshSubstats()
             {
                 int slot = Selected<int>(slotBox);
-                mainPanel.Visibility = slot >= 4 ? Visibility.Visible : Visibility.Collapsed;
-                if (slot < 4)
-                    return;
-
-                advancedStats previous = mainBox.SelectedItem is ComboBoxItem item && item.Tag is advancedStats chosen
+                advancedStats main = slot >= 4 && mainBox.SelectedItem is ComboBoxItem item && item.Tag is advancedStats chosen
                     ? chosen
-                    : Disk_Drive.MainStatOptions(slot)[0];
-                mainBox.Items.Clear();
-                foreach (advancedStats option in Disk_Drive.MainStatOptions(slot))
-                    mainBox.Items.Add(new ComboBoxItem { Content = ViewHelpers.Pretty(option), Tag = option });
-                Select(mainBox, previous);
+                    : Disk_Drive.SlotMainStat(slot);
+                IReadOnlyList<advancedStats> options = Disk_Drive.SubstatOptionsFor(main);
+
+                var preferred = new advancedStats[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    preferred[i] = subBoxes[i].SelectedItem is ComboBoxItem current && current.Tag is advancedStats selected
+                        ? selected
+                        : defaults[i];
+                }
+
+                var used = new HashSet<advancedStats>();
+                for (int i = 0; i < 4; i++)
+                {
+                    advancedStats pick = options.Contains(preferred[i]) && used.Add(preferred[i])
+                        ? preferred[i]
+                        : options.First(option => used.Add(option));
+                    subBoxes[i].Items.Clear();
+                    foreach (advancedStats option in options)
+                        subBoxes[i].Items.Add(new ComboBoxItem { Content = ViewHelpers.Pretty(option), Tag = option });
+                    Select(subBoxes[i], pick);
+                }
+            }
+
+            void RefreshMain()
+            {
+                refreshing = true;
+                int slot = Selected<int>(slotBox);
+                mainPanel.Visibility = slot >= 4 ? Visibility.Visible : Visibility.Collapsed;
+                if (slot >= 4)
+                {
+                    advancedStats previous = mainBox.SelectedItem is ComboBoxItem item && item.Tag is advancedStats chosen
+                        ? chosen
+                        : Disk_Drive.MainStatOptions(slot)[0];
+                    mainBox.Items.Clear();
+                    foreach (advancedStats option in Disk_Drive.MainStatOptions(slot))
+                        mainBox.Items.Add(new ComboBoxItem { Content = ViewHelpers.Pretty(option), Tag = option });
+                    Select(mainBox, previous);
+                    ShowFixedValue();
+                }
+
+                refreshing = false;
+                RefreshSubstats();
             }
 
             slotBox.SelectionChanged += (_, _) => RefreshMain();
             mainBox.SelectionChanged += (_, _) =>
             {
-                if (mainBox.SelectedItem is ComboBoxItem item && item.Tag is advancedStats stat)
-                    mainValue.Value = Disk_Drive.SuggestedMainValue(stat);
+                if (refreshing)
+                    return;
+                ShowFixedValue();
+                RefreshSubstats();
             };
             RefreshMain();
 
@@ -211,8 +251,7 @@ namespace Zenless.Ui
 
                     int slot = Selected<int>(slotBox);
                     advancedStats main = slot >= 4 ? Selected<advancedStats>(mainBox) : advancedStats.nill;
-                    double value = slot >= 4 ? mainValue.Value : 0;
-                    App.Player.CreateDiskDrive(Selected<driveSet>(setBox), subs, slot, main, value);
+                    App.Player.CreateDiskDrive(Selected<driveSet>(setBox), subs, slot, main);
                 }
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
                 {

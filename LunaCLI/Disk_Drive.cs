@@ -35,6 +35,8 @@ namespace Zenless
         {
             if (DriveSubStats.Count > 4)
                 throw new ArgumentException("A disk drive can have at most 4 substats.");
+            if (MainStat != advancedStats.nill && DriveSubStats.ContainsKey(MainStat))
+                throw new ArgumentException($"{StatName(MainStat)} is the main stat, so it cannot be a substat.");
 
             int i = 0;
             foreach (KeyValuePair<advancedStats, int> sub in DriveSubStats)
@@ -275,6 +277,34 @@ namespace Zenless
             advancedStats.PEN
         };
 
+        /// <summary>
+        /// Substats a disk can roll when <paramref name="mainStat"/> is its main stat.
+        /// The main stat itself is left out.
+        /// </summary>
+        public static IReadOnlyList<advancedStats> SubstatOptionsFor(advancedStats mainStat)
+        {
+            if (mainStat == advancedStats.nill)
+                return SubstatOptions;
+            return SubstatOptions.Where(stat => stat != mainStat).ToArray();
+        }
+
+        /// <summary>Fixed main stat for slots 1-3. Slots 4-6 return nill because the player chooses.</summary>
+        public static advancedStats SlotMainStat(int slot)
+        {
+            switch (slot)
+            {
+                case 1: return advancedStats.HP;
+                case 2: return advancedStats.ATK;
+                case 3: return advancedStats.DEF;
+                default: return advancedStats.nill;
+            }
+        }
+
+        public static string StatName(advancedStats stat)
+        {
+            return stat.ToString().Replace('_', ' ');
+        }
+
         /// <summary>Main stats legal for slots 4-6. Slots 1-3 are fixed by the disk class.</summary>
         public static IReadOnlyList<advancedStats> MainStatOptions(int slot)
         {
@@ -306,22 +336,34 @@ namespace Zenless
             }
         }
 
-        /// <summary>A level-15-style starting value so a new disk is usable before the number is edited.</summary>
-        public static double SuggestedMainValue(advancedStats stat)
+        /// <summary>
+        /// S-rank level 15 main-stat value. Slots 4-6 keep this number once the stat is chosen.
+        /// </summary>
+        public static double FixedMainValue(advancedStats stat)
         {
             switch (stat)
             {
-                case advancedStats.Anomaly_Proficiency: return 92;
                 case advancedStats.HP: return 2200;
                 case advancedStats.ATK: return 316;
                 case advancedStats.DEF: return 184;
+                case advancedStats.Anomaly_Proficiency: return 92;
                 case advancedStats.Crit_Rate:
                 case advancedStats.PEN_Ratio:
                     return 0.24;
                 case advancedStats.Crit_Damage:
+                case advancedStats.DEF_Percent:
                     return 0.48;
+                case advancedStats.Impact:
+                    return 0.18;
+                case advancedStats.EnergyRegen:
+                    return 0.60;
+                case advancedStats.HP_Percent:
+                case advancedStats.ATK_Percent:
+                case advancedStats.Damage_bonus:
+                case advancedStats.Anomaly_Mastery:
+                    return 0.30;
                 default:
-                    return Character.IsRatioStat(stat) ? 0.30 : 0;
+                    return 0;
             }
         }
 

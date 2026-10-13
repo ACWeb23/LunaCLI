@@ -145,28 +145,29 @@ namespace Zenless
         /// Builds a new disk drive and adds it to the unequipped inventory.
         /// Choose the drive set first, then supply exactly four distinct substats.
         /// The four <paramref name="driveSubStats"/> roll counts must add up to 8 or 9.
-        /// Slots 1-3 use a fixed main stat. Slots 4-6 also need <paramref name="mainStat"/> and <paramref name="mainStatValue"/>.
+        /// Slots 1-3 use a fixed main stat. Slots 4-6 take <paramref name="mainStat"/>,
+        /// and that stat's value is the fixed S-rank level 15 amount.
+        /// A substat cannot match the disk's main stat.
         /// </summary>
         /// <param name="driveSet">The disk set this piece belongs to.</param>
         /// <param name="driveSubStats">Exactly four advanced stats mapped to their roll counts. Each count must be at least 1.</param>
         /// <param name="slot">Drive slot 1 through 6. Determines which disk class and default main stat are used.</param>
         /// <param name="mainStat">Required main stat for slots 4-6. Ignored for slots 1-3.</param>
-        /// <param name="mainStatValue">Required main-stat value for slots 4-6. Ignored for slots 1-3.</param>
         /// <returns>The created disk drive, now owned and unequipped.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="driveSubStats"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="slot"/> is not between 1 and 6.</exception>
         /// <exception cref="ArgumentException">
         /// Thrown when there are not exactly four substats, a substat is invalid,
-        /// a roll count is below 1, or the four roll counts do not total 8 or 9.
-        /// Also thrown when slots 4-6 are missing a main stat or value.
+        /// a substat matches the main stat, a roll count is below 1, or the four roll counts do not total 8 or 9.
+        /// Also thrown when slots 4-6 are missing a main stat.
         /// </exception>
         public Disk_Drive CreateDiskDrive(
             driveSet driveSet,
             Dictionary<advancedStats, int> driveSubStats,
             int slot,
-            advancedStats mainStat = advancedStats.nill,
-            double mainStatValue = 0)
+            advancedStats mainStat = advancedStats.nill)
         {
+            double mainStatValue = slot >= 4 ? Disk_Drive.FixedMainValue(mainStat) : 0;
             return BuildDiskDrive(AllocateDiskId(), driveSet, driveSubStats, slot, mainStat, mainStatValue);
         }
 
@@ -205,7 +206,8 @@ namespace Zenless
             if (slot < 1 || slot > 6)
                 throw new ArgumentOutOfRangeException(nameof(slot), "Disk slot must be between 1 and 6.");
 
-            ValidateSubstats(driveSubStats);
+            advancedStats effectiveMain = slot <= 3 ? Disk_Drive.SlotMainStat(slot) : mainStat;
+            ValidateSubstats(driveSubStats, effectiveMain);
 
             int setID = (int)driveSet;
             Disk_Drive disk;
@@ -443,13 +445,16 @@ namespace Zenless
 
         /// <summary>
         /// Requires exactly four distinct advanced stats whose roll counts sum to 8 or 9.
+        /// None of them may be <paramref name="mainStat"/>.
         /// </summary>
-        private static void ValidateSubstats(Dictionary<advancedStats, int> driveSubStats)
+        private static void ValidateSubstats(Dictionary<advancedStats, int> driveSubStats, advancedStats mainStat)
         {
             if (driveSubStats.Count != 4)
                 throw new ArgumentException("A disk drive must have exactly 4 advanced stats.");
             if (driveSubStats.ContainsKey(advancedStats.nill))
                 throw new ArgumentException("Substats cannot be nill.");
+            if (mainStat != advancedStats.nill && driveSubStats.ContainsKey(mainStat))
+                throw new ArgumentException($"{Disk_Drive.StatName(mainStat)} is the main stat, so it cannot be a substat.");
             if (driveSubStats.Keys.Any(stat => Disk_Drive.SubstatRollValue(stat) <= 0))
                 throw new ArgumentException("One or more substats are not valid disk substats.");
             if (driveSubStats.Values.Any(rolls => rolls < 1))
@@ -461,12 +466,14 @@ namespace Zenless
         }
 
         /// <summary>
-        /// Slots 4-6 do not have a fixed main stat, so both the stat and its value must be provided.
+        /// Slots 4-6 do not have a fixed main stat, so the chosen stat and its fixed value must be present.
         /// </summary>
         private static void RequireFlexibleMainStat(int slot, advancedStats mainStat, double mainStatValue)
         {
             if (mainStat == advancedStats.nill)
                 throw new ArgumentException($"Slot {slot} requires a main stat.");
+            if (!Disk_Drive.MainStatOptions(slot).Contains(mainStat))
+                throw new ArgumentException($"Slot {slot} cannot use {Disk_Drive.StatName(mainStat)} as its main stat.");
             if (mainStatValue <= 0)
                 throw new ArgumentException($"Slot {slot} requires a main-stat value greater than 0.");
         }

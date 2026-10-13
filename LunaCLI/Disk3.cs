@@ -10,7 +10,7 @@ namespace Zenless
             DriveSet = driveSet;
             Drive_Num = 3;
             MainStat = advancedStats.DEF;
-            MainStatValue = 184.0;
+            MainStatValue = FixedMainValue(MainStat);
             Load_Substats(substats);
             UseSetIcon();
         }

@@ -400,31 +400,27 @@ namespace Zenless
 
             int slot = ReadBounded("Slot (1-6): ", 1, 6);
             advancedStats main = advancedStats.nill;
-            double mainValue = 0;
             if (slot >= 4)
             {
                 main = PickStat("Main stat", Disk_Drive.MainStatOptions(slot));
-                double suggested = Disk_Drive.SuggestedMainValue(main);
-                Console.Write($"Main stat value (fractions for percents, suggested {suggested}): ");
-                if (!double.TryParse(Console.ReadLine(), out mainValue) || mainValue <= 0)
-                {
-                    mainValue = suggested;
-                    Console.WriteLine($"Using {mainValue}.");
-                }
+                Console.WriteLine($"Main stat value is fixed at {Ui.ViewHelpers.FormatStat(main, Disk_Drive.FixedMainValue(main))}.");
             }
 
+            advancedStats blocked = slot >= 4 ? main : Disk_Drive.SlotMainStat(slot);
             var subs = new Dictionary<advancedStats, int>();
             Console.WriteLine("Pick 4 different substats. The roll counts must total 8 or 9.");
             for (int n = 1; n <= 4; n++)
             {
-                List<advancedStats> remaining = Disk_Drive.SubstatOptions.Where(stat => !subs.ContainsKey(stat)).ToList();
+                List<advancedStats> remaining = Disk_Drive.SubstatOptionsFor(blocked)
+                    .Where(stat => !subs.ContainsKey(stat))
+                    .ToList();
                 advancedStats stat = PickStat($"Substat {n}", remaining);
                 subs[stat] = ReadBounded($"Rolls for {stat}: ", 1, 6);
             }
 
             try
             {
-                Disk_Drive disk = player.CreateDiskDrive(sets[setIndex - 1], subs, slot, main, mainValue);
+                Disk_Drive disk = player.CreateDiskDrive(sets[setIndex - 1], subs, slot, main);
                 Console.WriteLine($"Created {Disk_Drive.SetName(disk.DriveSet)} slot {disk.Drive_Num} (ID {disk.DiskID}).");
             }
             catch (ArgumentException ex)
