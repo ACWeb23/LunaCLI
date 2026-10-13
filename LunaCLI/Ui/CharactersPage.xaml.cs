@@ -35,7 +35,10 @@ namespace Zenless.Ui
             if (RosterList.Items.Count > 0)
                 RosterList.SelectedIndex = 0;
             else
+            {
+                Detail.Children.Clear();
                 Detail.Children.Add(ViewHelpers.Muted("No characters in the roster."));
+            }
         }
 
         private Grid RosterRow(Character character)
@@ -128,6 +131,14 @@ namespace Zenless.Ui
             info.Children.Add(ViewHelpers.Muted(
                 $"{ViewHelpers.Pretty(character.specialty)}   ·   {ViewHelpers.Pretty(character.attackType)}   ·   {ViewHelpers.Pretty(character.atkElement)}"));
             info.Children.Add(StatBlock(stats));
+            var delete = new Button
+            {
+                Content = "Delete character",
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            Character bound = character;
+            delete.Click += async (_, _) => await DeleteCharacter(bound);
+            info.Children.Add(delete);
             Grid.SetColumn(info, 1);
             header.Children.Add(info);
             Detail.Children.Add(header);
@@ -158,6 +169,17 @@ namespace Zenless.Ui
                     });
                 }
             }
+        }
+
+        private async Task DeleteCharacter(Character character)
+        {
+            string detail = $"Delete {character.getName()} from the roster? Equipped W-Engines and disk drives stay in the inventory.";
+            var dialog = ViewHelpers.Dialog("Delete character", detail, XamlRoot, "Delete");
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            App.Player.RemoveCharacter(character);
+            LoadRoster();
         }
 
         private static Border RankBadge(Character character)

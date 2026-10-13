@@ -100,6 +100,30 @@ namespace Zenless
         }
 
         /// <summary>
+        /// Removes a character from the roster. Equipped W-Engines and disk drives stay owned and return to the inventory.
+        /// </summary>
+        /// <param name="character">The roster character to remove.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="character"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the character is not in this player's roster.</exception>
+        public void RemoveCharacter(Character character)
+        {
+            EnsureOwnedCharacter(character);
+
+            Weapon? weapon = character.UnequipWEngine();
+            if (weapon != null)
+                unequippedWeapons.Add(weapon);
+
+            foreach (Disk_Drive disk in character.GetEquippedDisks().ToList())
+            {
+                character.UnequipDisk(disk.Drive_Num);
+                unequippedDiskDrives[disk.DiskID] = disk;
+            }
+
+            characters.Remove(character.characterID);
+            NotifyChanged();
+        }
+
+        /// <summary>
         /// Adds a weapon to the player's collection and places it in the unequipped inventory.
         /// Uniqueness is by object instance, so two separate copies of the same W-Engine type are allowed.
         /// </summary>
