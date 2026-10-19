@@ -137,6 +137,15 @@ namespace Zenless
         protected List<bool> mindscapes = new List<bool>([false, false, false, false, false, false]);
 
         /// <summary>
+        /// List of core passive buffs associated with the instance.
+        /// </summary>
+        /// <remarks>Initialized to an empty List<Buff>. The list is mutable and not
+        /// thread-safe.</remarks>
+        protected List<Buff> CorePassiveBuff = new List<Buff>();
+        protected (advancedStats stat, double value) CorePassiveStat1 = (advancedStats.nill, 0);
+        protected (advancedStats stat, double value) CorePassiveStat2 = (advancedStats.nill, 0);
+
+        /// <summary>
         /// Records identity only. Base stats are assigned by the subclass after
         /// this constructor returns, because each agent has its own level curve.
         /// </summary>
